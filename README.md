@@ -26,7 +26,7 @@ Personal project. Not accepting PRs.
 Fork freely for own use.
 
 ## 📜 License
-Please see the [license file](https://github.com/ZalmoraDev/deepseek-harness-container/blob/main/LICENSE) for more information. [tl;dr](https://www.tldrlegal.com/license/mit-license):
+Please see the [license file](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/LICENSE) for more information. [tl;dr](https://www.tldrlegal.com/license/mit-license):
 ```
 A short, permissive software license.
 Basically, you can do whatever you want as long as you include
