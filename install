@@ -68,7 +68,7 @@ DSH_DIR="$(pwd)"
 case "\$1" in
   start)
     sudo systemctl start docker
-    docker compose -p dsh up
+    docker compose -p dsh up -d
     ;;
   stop)
     docker compose -p dsh down -v
