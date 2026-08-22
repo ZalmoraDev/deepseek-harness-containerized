@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+# Fail / Interruption handling
+set -e
+trap 'echo "Interrupted. Exiting safely."; exit 130' INT
+
+# ----- colors -----
+ERROR=$'\033[31m'
+SUCCESS=$'\033[32m'
+INFO=$'\033[34m'
+
+COMMAND=$'\033[33m'
+LOCATION=$'\033[35m'
+
+ENDCOLOR=$'\033[0m'
+
+# Visualize scripts output
+dsh_print() {
+    local text="$1"
+    local color="$2"
+
+    echo "${color}[dsh-container]${ENDCOLOR} ${text}"
+}
+
+
+
+dsh_print "Checking if required dependencies are installed..." "$INFO"
+missing_deps=()
+
+command -v docker >/dev/null 2>&1 || missing_deps+=("docker")
+docker compose version >/dev/null 2>&1 || missing_deps+=("docker compose")
+command -v git >/dev/null 2>&1 || missing_deps+=("git")
+
+if (( ${#missing_deps[@]} > 0 )); then
+    dsh_print "Missing dependencies: ${missing_deps[*]}" "$ERROR"
+    dsh_print "EXIT 1" "$ERROR"
+    exit 1
+fi
+
+
+
+dsh_print "Checking if DeepSeek Harness repo is already present..." "$INFO"
+if [[ ! -d "./deepseek-harness" ]]; then
+  dsh_print "Cloning deepseek-harness github project..." "$INFO"
+  git clone -q --depth 1 https://github.com/deepseek-ai/deepseek-harness.git
+  dsh_print "Cloned DeepSeek Harness repo, location:$LOCATION $(pwd)/deepseek-harness$ENDCOLOR" "$SUCCESS"
+fi
+
+
+dsh_print "Building Docker image..." "$INFO"
+docker compose build -q
+
+dsh_print "Creating Docker container..." "$INFO"
+docker compose create
+
+BIN_DIR="$HOME/bin"
+WRAPPER="$BIN_DIR/dsh"
+
+dsh_print "Creating wrapper script..." "$INFO"
+mkdir -p "$BIN_DIR"
+
+# Wrapper script that will be copied to the users bin dir ($HOME/bin)
+cat > "$WRAPPER" << EOF
+#!/usr/bin/env bash
+
+DSH_DIR="$(pwd)"
+
+case "\$1" in
+  start)
+    sudo systemctl start docker
+    docker compose -p dsh start
+    ;;
+  stop)
+    docker compose -p dsh stop
+    ;;
+  update)
+    cd "\$DSH_DIR" && git pull
+    ;;
+  *)
+    echo "Usage: dsh { start | stop | update }"
+    ;;
+esac
+EOF
+
+
+
+chmod a+x "$WRAPPER"
+dsh_print "Created dsh wrapper at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
+echo
+dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
+dsh_print "Start:  $COMMAND dsh start$ENDCOLOR" "$INFO"
+dsh_print "Stop:   $COMMAND dsh stop$ENDCOLOR" "$INFO"
+dsh_print "Update: $COMMAND dsh update$ENDCOLOR (pulls newest github version)" "$INFO"
