@@ -8,9 +8,10 @@ trap 'echo "Interrupted. Exiting safely."; exit 130' INT
 ERROR=$'\033[31m'
 SUCCESS=$'\033[32m'
 INFO=$'\033[34m'
+IMPORTANT=$'\033[35m'
 
 COMMAND=$'\033[33m'
-LOCATION=$'\033[35m'
+LOCATION=$'\033[36m'
 
 ENDCOLOR=$'\033[0m'
 
@@ -24,7 +25,7 @@ dsh_print() {
 
 
 
-dsh_print "Checking if required dependencies are installed..." "$INFO"
+dsh_print "Checking if required dependencies are installed" "$INFO"
 missing_deps=()
 
 command -v docker >/dev/null 2>&1 || missing_deps+=("docker")
@@ -39,24 +40,24 @@ fi
 
 
 
-dsh_print "Checking if DeepSeek Harness repo is already present..." "$INFO"
+dsh_print "Checking if DeepSeek Harness repo is already present" "$INFO"
 if [[ ! -d "./deepseek-harness" ]]; then
-  dsh_print "Cloning deepseek-harness github project..." "$INFO"
+  dsh_print "Repo not found, cloning deepseek-harness github project" "$INFO"
   git clone -q --depth 1 https://github.com/deepseek-ai/deepseek-harness.git
-  dsh_print "Cloned DeepSeek Harness repo, location:$LOCATION $(pwd)/deepseek-harness$ENDCOLOR" "$SUCCESS"
+  dsh_print "Cloned DeepSeek Harness repo, location:$LOCATION $(pwd)/deepseek-harness/$ENDCOLOR" "$SUCCESS"
 fi
 
 
-dsh_print "Building Docker image..." "$INFO"
+dsh_print "Building Docker image (may take a while)" "$INFO"
 docker compose build -q
 
-dsh_print "Creating Docker container..." "$INFO"
+dsh_print "Creating Docker container" "$INFO"
 docker compose create
 
 BIN_DIR="$HOME/bin"
 WRAPPER="$BIN_DIR/dsh"
 
-dsh_print "Creating wrapper script..." "$INFO"
+dsh_print "Creating wrapper script" "$INFO"
 mkdir -p "$BIN_DIR"
 
 # Wrapper script that will be copied to the users bin dir ($HOME/bin)
@@ -69,6 +70,7 @@ case "\$1" in
   start)
     sudo systemctl start docker
     docker compose -p dsh up -d
+    echo "dsh web: http://127.0.0.1:3080"
     ;;
   stop)
     docker compose -p dsh down -v
@@ -86,6 +88,13 @@ EOF
 
 chmod a+x "$WRAPPER"
 dsh_print "Created dsh wrapper at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
+echo
+dsh_print "IMPORTANT: Currently DSH is unable to be hosted on 0.0.0.0, since: 'it would expose remote code execution to the network'." "$IMPORTANT"
+dsh_print "This would only be a concern if ran on a local-machine," "$IMPORTANT"
+dsh_print "but since this is run in a docker container, which needs port 0.0.0.0 to properly function," "$IMPORTANT"
+dsh_print "this script's$LOCATION dsh.dockerfile$ENDCOLOR runs socat to proxy port 3080 on 0.0.0.0 to DSH's internal 127.0.0.1:3079," "$IMPORTANT"
+dsh_print "since DSH intentionally rejects binding to 0.0.0.0 directly." "$IMPORTANT"
+dsh_print "Please visit this link for more information: https://github.com/deepseek-ai/deepseek-harness/discussions/76" "$IMPORTANT"
 echo
 dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
 dsh_print "Start:  $COMMAND dsh start$ENDCOLOR" "$INFO"

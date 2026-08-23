@@ -5,8 +5,15 @@ services:
     build:
       context: ./deepseek-harness
       dockerfile: ../dsh.dockerfile
-    network_mode: host
+    ports:
+      - "127.0.0.1:3080:3080"
     restart: no
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
     volumes:
       # DON'T TOUCH: Share host & container config, container conf not lost on volume removal
       - ${HOME}/.dsh:/root/.dsh
