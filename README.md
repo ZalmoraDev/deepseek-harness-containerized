@@ -1,6 +1,6 @@
 # 🐋 Deepseek Harness Containerized 🐋
-Simple Linux Bash script to install & run DeepSeek Harness (DSH) with isolated workspaces through Docker.  
-Prevent DSH from accessing unwanted directories by whitelisting specific volumes  
+Simple Linux Bash script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with isolated workspaces through Docker.  
+Prevent DSH from accessing unwanted directories by whitelisting specific volumes.  
 
 > [!IMPORTANT]
 > Currently DSH is unable to be hosted on 0.0.0.0,  
