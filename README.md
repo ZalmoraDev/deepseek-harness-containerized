@@ -1,5 +1,5 @@
 # 🐋 Deepseek Harness Containerized 🐋
-Simple script to install & run DeepSeek Harness (DSH) with isolated workspaces through Docker.  
+Simple Linux Bash script to install & run DeepSeek Harness (DSH) with isolated workspaces through Docker.  
 Prevent DSH from accessing unwanted directories by whitelisting volumes  
 > [!NOTE]
 > See `compose.yml` for examples
