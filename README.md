@@ -5,7 +5,8 @@ Prevent DSH from accessing unwanted directories by whitelisting volumes
 > See `compose.yml` for examples
 
 > [!IMPORTANT]
-> Currently DSH is unable to be hosted on 0.0.0.0, since: "it would expose remote code execution to the network".  
+> Currently DSH is unable to be hosted on 0.0.0.0,
+> since: "it would expose remote code execution to the network".  
 > This would only be a concern if ran on a local machine,  
 > but since this is run in a Docker container which needs port 0.0.0.0 to properly function,  
 > this script's `dsh.dockerfile` runs **socat** to proxy port 3080 on 0.0.0.0 to DSH's internal 127.0.0.1:3079,  
