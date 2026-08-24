@@ -59,6 +59,7 @@ docker compose build -q
 dsh_print "Creating Docker container" "$INFO"
 docker compose create
 
+DSH_DIR="$(pwd)"
 BIN_DIR="$HOME/bin"
 WRAPPER="$BIN_DIR/dsh"
 
@@ -66,36 +67,43 @@ dsh_print "Creating wrapper script" "$INFO"
 mkdir -p "$BIN_DIR"
 
 # Wrapper script that will be copied to the users bin dir ($HOME/bin)
+PROJECT_DIR="$DSH_DIR"
 cat > "$WRAPPER" << EOF
 #!/usr/bin/env bash
 
-DSH_DIR="$(pwd)"
+DSH_DIR="$PROJECT_DIR"
 
 case "\$1" in
   start)
     sudo systemctl start docker
-    docker compose -p dsh up -d
+    docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d
     echo "dsh web: http://127.0.0.1:3080"
     ;;
+
   stop)
-    docker compose -p dsh stop
+    docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop
     ;;
+
   restart)
-    docker compose -p dsh stop
-    docker compose -p dsh up -d
+    docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop
+    docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d
     echo "dsh web: http://127.0.0.1:3080"
     ;;
+
   app)
     docker exec dsh-deepseek-harness node apps/cli/src/bin.ts
     ;;
+
   update)
     cd "\$DSH_DIR" && git pull
     ;;
+
   uninstall)
-    docker compose -p dsh down -v --rmi local
+    docker compose -p dsh -f "\$DSH_DIR/compose.yml" down -v --rmi local
     echo "Removed Docker files"
     rm -rf "\$HOME/bin/dsh"
     echo "Removed dsh home binary"
+
     read -rp "Remove ~/.dsh? (y/N): " answer
     if [[ "\$answer" =~ ^[Yy]\$ ]]; then
       rm -rf "\$HOME/.dsh"
@@ -104,8 +112,9 @@ case "\$1" in
       echo "Kept ~/.dsh"
     fi
     ;;
+
   *)
-    echo "Usage: dsh { start | stop | restart | update | uninstall }"
+    echo "Usage: dsh { start | stop | restart | app | update | uninstall }"
     ;;
 esac
 EOF
