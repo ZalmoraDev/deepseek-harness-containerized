@@ -64,14 +64,16 @@ BIN_DIR="$HOME/bin"
 WRAPPER="$BIN_DIR/dsh"
 
 dsh_print "Creating wrapper script" "$INFO"
+if [ ! -d "$WRAPPER" ]; then
+  rm -rf "$WRAPPER"
+fi
 mkdir -p "$BIN_DIR"
 
 # Wrapper script that will be copied to the users bin dir ($HOME/bin)
-PROJECT_DIR="$DSH_DIR"
 cat > "$WRAPPER" << EOF
 #!/usr/bin/env bash
 
-DSH_DIR="$PROJECT_DIR"
+DSH_DIR="$DSH_DIR"
 
 case "\$1" in
   start)
@@ -91,7 +93,11 @@ case "\$1" in
     ;;
 
   app)
-    docker exec dsh-deepseek-harness node apps/cli/src/bin.ts
+    shift
+    docker exec -it dsh-deepseek-harness node apps/cli/src/bin.ts "\$@"
+    ;;
+  enter)
+    docker exec -it dsh-deepseek-harness sh
     ;;
 
   update)
@@ -124,10 +130,10 @@ dsh_print "Created dsh wrapper at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
 
 DSH_DIR="$HOME/.dsh"
 if [ ! -d "$DSH_DIR" ]; then
-    mkdir -p "$DSH_DIR"
+  mkdir -p "$DSH_DIR"
 elif [ "$(stat -c '%u' "$DSH_DIR")" != "$(id -u)" ]; then
-    chown -R "$(id -u):$(id -g)" "$DSH_DIR"
-    dsh_print "Changed $LOCATION~/.dsh$ENDCOLOR ownership from root (assigned by DSH build) to your user '$(WHOAMI)'" "$SUCCESS"
+  chown -R "$(id -u):$(id -g)" "$DSH_DIR"
+  dsh_print "Changed $LOCATION~/.dsh$ENDCOLOR ownership from root (assigned by DSH build) to your user '$(WHOAMI)'" "$SUCCESS"
 fi
 echo
 dsh_print "IMPORTANT: Currently DSH is unable to be hosted on 0.0.0.0, since: 'it would expose remote code execution to the network'." "$IMPORTANT"
@@ -144,7 +150,10 @@ dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
 dsh_print "$COMMAND  dsh start$ENDCOLOR" "$INFO"
 dsh_print "$COMMAND  dsh stop$ENDCOLOR" "$INFO"
 dsh_print "$COMMAND  dsh restart$ENDCOLOR (load new plugins)" "$INFO"
-dsh_print "$COMMAND  dsh app --help$ENDCOLOR (print help menu of the DSH binary)" "$INFO"
-dsh_print "$COMMAND  dsh app [options] [command] [args...]$ENDCOLOR (wraps DSH binary to allow easy access from host)" "$INFO"
+echo
+dsh_print "$COMMAND  dsh app --help$ENDCOLOR (must run, print help menu of the DSH binary)" "$INFO"
+dsh_print "$COMMAND  dsh app [options] [command] [args...]$ENDCOLOR (must run, wraps DSH binary to allow easy access from host)" "$INFO"
+dsh_print "$COMMAND  dsh enter$ENDCOLOR (must run, docker exec into the container with a shell)" "$INFO"
+echo
 dsh_print "$COMMAND  dsh update$ENDCOLOR (pulls newest github version)" "$INFO"
 dsh_print "$COMMAND  dsh uninstall$ENDCOLOR (removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR)" "$INFO"
