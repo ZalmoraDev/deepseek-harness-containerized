@@ -5,21 +5,21 @@ services:
     build:
       context: ./deepseek-harness
       dockerfile: ../dsh.dockerfile
+      args:
+        HOST_UID: ${HOST_UID}
     ports:
       - "127.0.0.1:3080:3080"
     restart: no
 
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
+    security_opt:
+      - no-new-privileges:true
 
     volumes:
       # DON'T TOUCH: Share host & container config, container conf not lost on volume removal
       - ${HOME}/.dsh:/root/.dsh
 
-
-      # Add custom volumes here, e.g. per project or directory (such as everything under $HOME/code)
-      # Container should be under `/root`
-      # EXAMPLE: all code testing dirs, as these aren't crucial enough to warrant project-based isolation
-      - ${HOME}/code/testing:/root/code/testing
+      # Add custom volumes here, e.g. per directory or individual project
+      - ${HOME}/code/testing/:/root/code/testing/
+      - ${HOME}/code/personal/deepseek-harnesss-containerized/:/root/code/personal/deepseek-harnesss-containerized/

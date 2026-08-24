@@ -3,6 +3,10 @@ Simple Linux Bash script to install & run [DeepSeek Harness (DSH)](https://githu
 Prevent DSH from accessing unwanted directories by whitelisting specific volumes.  
 
 > [!IMPORTANT]
+> To avoid sandboxing issues, make sure to always run with 'Full Access'  
+> Doing this is not a security concern as Docker provides isolation through volume mounting
+
+> [!IMPORTANT]
 > Currently DSH is unable to be hosted on 0.0.0.0,  
 > since: "it would expose remote code execution to the network".
 > 
@@ -20,13 +24,17 @@ Prevent DSH from accessing unwanted directories by whitelisting specific volumes
 2. Clone this repository
 3. Run `./install`
 4. See [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml) to configure DHS-workspace volumes access
-
+5. See [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) to configure installed container packages
 
 ## 🚀 Usage
 ```bash
 dsh start
 dsh stop
-dsh update # git pull lastest version
+dsh restart # load new plugins
+dsh app --help # print help menu of the DSH binary
+dsh app [options] [command] [args...] # wraps DSH binary to allow easy access from host
+dsh update # pulls newest GitHub version
+dsh uninstall # removes Docker files, asks confirmation for ~/.dsh
 ```
 
 ## 🤝 Contributing
