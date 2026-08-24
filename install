@@ -94,6 +94,8 @@ case "\$1" in
   uninstall)
     docker compose -p dsh down -v --rmi local
     echo "Removed Docker files"
+    rm -rf "\$HOME/bin/dsh"
+    echo "Removed dsh home binary"
     read -rp "Remove ~/.dsh? (y/N): " answer
     if [[ "\$answer" =~ ^[Yy]\$ ]]; then
       rm -rf "\$HOME/.dsh"
