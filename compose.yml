@@ -5,21 +5,17 @@ services:
     build:
       context: ./deepseek-harness
       dockerfile: ../dsh.dockerfile
-      args:
-        HOST_UID: ${HOST_UID}
     ports:
       - "127.0.0.1:3080:3080"
     restart: no
-
-    cap_drop:
-      - ALL
     security_opt:
       - no-new-privileges:true
-
     volumes:
-      # DON'T TOUCH: Share host & container config, container conf not lost on volume removal
-      - ${HOME}/.dsh:/root/.dsh
+      - dsh_config:/root/.dsh
+      - ${HOME}/code/testing:/root/code/testing
+      - ${HOME}/code/school/07-webdev2/memory-mall:/root/code/school/07-webdev2/memory-mall
+      - ${HOME}/code/personal/portfolio:/root/code/personal/portfolio
+      - ${HOME}/containers/dsh/:/root/containers/dsh/
 
-      # Add custom volumes here, e.g. per directory or individual project
-      - ${HOME}/code/testing/:/root/code/testing/
-      - ${HOME}/code/personal/deepseek-harnesss-containerized/:/root/code/personal/deepseek-harnesss-containerized/
+volumes:
+  dsh_config:

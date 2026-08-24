@@ -1,22 +1,17 @@
 FROM node:24-alpine
-ARG HOST_UID
 WORKDIR /app
 COPY . .
 
 ENV CI=true
 # 1 essential, 2 recommended
 RUN apk add --no-cache \
-    git pnpm socat shadow bubblewrap \
+    git pnpm socat nodejs-dev nano g++ \
     bash curl grep sed gawk ripgrep fd jq python3 make cmake
 
+RUN npm install -g node-gyp # Needed for plugin installation
 RUN pnpm install
 RUN pnpm run build
 EXPOSE 3080
-
-# Use the local user who ran ./install to set the container node user UID
-# UID's need to be the same to allow the agent write access, root wouldn't work
-RUN usermod -u ${HOST_UID} node # package `shadow` provides usermod
-USER node
 
 # `--expose-internals --import tsx/esm` is a reported issue
 # https://github.com/deepseek-ai/deepseek-harness/discussions/752
