@@ -28,13 +28,16 @@ Prevent DSH from accessing unwanted directories by whitelisting specific volumes
 
 ## 🚀 Usage
 ```bash
-dsh start
-dsh stop
-dsh restart # load new plugins
-dsh app --help # print help menu of the DSH binary
-dsh app [options] [command] [args...] # wraps DSH binary to allow easy access from host
-dsh update # pulls newest GitHub version
-dsh uninstall # removes Docker files, asks confirmation for ~/.dsh
+dsh start  
+dsh stop  
+dsh restart (load new plugins)  
+
+dsh app --help (must run, print help menu of the DSH binary)  
+dsh app [options] [command] [args...] (must run, wraps DSH binary to allow easy access from host)  
+dsh enter (must run, docker exec into the container with a shell)  
+
+dsh update (pulls newest github version)  
+dsh uninstall (removes Docker files, asks confirmation for ~/.dsh)
 ```
 
 ## 🤝 Contributing
