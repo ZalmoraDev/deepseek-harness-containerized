@@ -114,8 +114,157 @@ case "\$1" in
   enter)
     docker exec -it dsh-deepseek-harness sh
     ;;
+  volume)
+    COMPOSE_FILE="\$DSH_DIR/compose.yml"
+
+    # Locate the SECOND 'volumes:' line (the service-level bind list)
+    second_vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
+    if [ -z "\$second_vol_line" ]; then
+      echo "[DHS] No second 'volumes:' section found in \$COMPOSE_FILE"
+      exit 1
+    fi
+
+    # Raw bind lines (preserve \${HOME}) from the second volumes: to EOF
+    mapfile -t raw_binds < <(tail -n +"\$second_vol_line" "\$COMPOSE_FILE" \
+      | grep -E '^[[:space:]]*-[[:space:]]' \
+      | sed -E 's/^[[:space:]]*-[[:space:]]//; s/[[:space:]]*$//')
+
+    # Resolved absolute host paths (for matching against current directory)
+    vol_abs=()
+    for bind in "\${raw_binds[@]}"; do
+      hp="\${bind%%:*}"
+      case "\$hp" in
+        */*) ;;
+        *) continue ;;
+      esac
+      hp="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+      vol_abs+=("\$hp")
+    done
+
+    # Build checklist from current directory (hidden included, not . or ..)
+    items=()
+    checked=()
+    shopt -s dotglob
+    for item in *; do
+      [ "\$item" = "." ] && continue
+      [ "\$item" = ".." ] && continue
+      items+=("\$item")
+      full="\$(pwd)/\$item"
+      c=0
+      for vp in "\${vol_abs[@]}"; do
+        case "\$vp" in
+          "\$full"|"\$full/"*) c=1; break ;;
+        esac
+      done
+      checked+=("\$c")
+    done
+    shopt -u dotglob
+
+    # Interactive selection
+    sel=0
+    while true; do
+      clear
+      echo "[DHS] Volume checklist for: \$(pwd)"
+      echo "  (UP/DOWN move, SPACE toggle, a=all, n=none, ENTER apply, q quit)"
+      echo ""
+      for i in "\${!items[@]}"; do
+        if [ "\${checked[\$i]}" = "1" ]; then mark="[x]"; else mark="[ ]"; fi
+        if [ "\$i" = "\$sel" ]; then
+          echo "  > \$mark \${items[\$i]}"
+        else
+          echo "    \$mark \${items[\$i]}"
+        fi
+      done
+      IFS= read -rsn1 key
+      case "\$key" in
+        \$'\e')
+          IFS= read -rsn2 -t 0.1 rest
+          key="\$key\$rest"
+          case "\$key" in
+            \$'\e[A') [ "\$sel" -gt 0 ] && sel=\$((sel-1)) ;;
+            \$'\e[B') [ "\$sel" -lt \$((\${#items[@]}-1)) ] && sel=\$((sel+1)) ;;
+          esac
+          ;;
+        ' ') checked[\$sel]=\$((1-\${checked[\$sel]})) ;;
+        a) for i in "\${!checked[@]}"; do checked[\$i]=1; done ;;
+        n) for i in "\${!checked[@]}"; do checked[\$i]=0; done ;;
+        q) echo "Aborted."; exit 0 ;;
+        '') break ;;
+      esac
+    done
+
+    # Apply: rebuild the bind list from selections
+    new_binds=()
+    # Keep existing binds that are NOT tied to an unchecked item
+    for bind in "\${raw_binds[@]}"; do
+      hp="\${bind%%:*}"
+      # Named volumes (no slash, e.g. dsh_config) are always kept
+      case "\$hp" in
+        */*) ;;
+        *) new_binds+=("\$bind"); continue ;;
+      esac
+      # Resolve literal \${HOME} / ~ so we compare absolute paths
+      hp_abs="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+      remove=0
+      for i in "\${!items[@]}"; do
+        if [ "\${checked[\$i]}" = "0" ]; then
+          full="\$(pwd)/\${items[\$i]}"
+          nf="\${full%/}"; nh="\${hp_abs%/}"
+          if [ "\$nh" = "\$nf" ] || [[ "\$nh" == "\$nf"/* ]]; then
+            remove=1; break
+          fi
+        fi
+      done
+      [ "\$remove" = "1" ] && continue
+      new_binds+=("\$bind")
+    done
+    # Add checked items that are not already covered by an existing bind
+    for i in "\${!items[@]}"; do
+      if [ "\${checked[\$i]}" = "1" ]; then
+        item="\${items[\$i]}"
+        host="\$(pwd)/\$item"
+        present=0
+        for b in "\${new_binds[@]}"; do
+          bh="\${b%%:*}"
+          bh="\$(echo "\$bh" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+          bh="\${bh%/}"; hn="\${host%/}"
+          [ "\$bh" = "\$hn" ] && present=1 && break
+        done
+        [ "\$present" = "1" ] && continue
+        if [[ "\$host" == "\$HOME"/* ]]; then
+          rel="\${host#\$HOME/}"
+          hdisp="\\\${HOME}/\$rel"
+          cdisp="/root/\$rel"
+        else
+          hdisp="\$host"
+          cdisp="/root/\${host#/}"
+        fi
+        if [ -d "\$host" ]; then hdisp="\$hdisp/"; cdisp="\$cdisp/"; fi
+        new_binds+=("\$hdisp:\$cdisp")
+      fi
+    done
+
+    # Rewrite the second volumes: section in compose.yml
+    mapfile -t clines < "\$COMPOSE_FILE"
+    si=\$((second_vol_line - 1))
+    ei=\$si
+    for ((j=si+1; j<\${#clines[@]}; j++)); do
+      if [[ "\${clines[\$j]}" =~ ^[[:space:]] ]]; then
+        ei=\$j
+      else
+        break
+      fi
+    done
+    out=()
+    for ((k=0; k<si; k++)); do out+=("\${clines[\$k]}"); done
+    out+=("\${clines[\$si]}")
+    for b in "\${new_binds[@]}"; do out+=("      - \$b"); done
+    for ((k=ei+1; k<\${#clines[@]}; k++)); do out+=("\${clines[\$k]}"); done
+    printf '%s\n' "\${out[@]}" > "\$COMPOSE_FILE"
+    echo "[DHS] compose.yml volume binds updated."
+    ;;
   help)
-    echo "Usage: dsh { start | stop | restart | help | update | uninstall | enter }"
+    echo "Usage: dsh { start | stop | restart | help | update | uninstall | enter | volume }"
     echo "       dsh [pnpm dsh args...] - passthrough to 'pnpm dsh' inside container"
     ;;
   *)
@@ -132,16 +281,17 @@ dsh_print "Created dsh wrapper binary at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
 dsh_print "Installing recommended plugin(s)" "$INFO"
 dsh start
 dsh plugin --profile web add dsh-plugin
+dsh plugin --profile web add dsh-cost-meter
 dsh stop
 dsh_print "Installed: dsh-plugin" "$SUCCESS"
 
 
 # Create ~/.dsh if not present already
-DSH_DIR="$HOME/.dsh"
-if [ ! -d "$DSH_DIR" ]; then
-  mkdir -p "$DSH_DIR"
-elif [ "$(stat -c '%u' "$DSH_DIR")" != "$(id -u)" ]; then
-  chown -R "$(id -u):$(id -g)" "$DSH_DIR"
+DSH_CONFIG_DIR="$HOME/.dsh"
+if [ ! -d "$DSH_CONFIG_DIR" ]; then
+  mkdir -p "$DSH_CONFIG_DIR"
+elif [ "$(stat -c '%u' "$DSH_CONFIG_DIR")" != "$(id -u)" ]; then
+  chown -R "$(id -u):$(id -g)" "$DSH_CONFIG_DIR"
   dsh_print "Changed $LOCATION~/.dsh$ENDCOLOR ownership from root (assigned by DSH build) to your user '$(WHOAMI)'" "$SUCCESS"
 fi
 

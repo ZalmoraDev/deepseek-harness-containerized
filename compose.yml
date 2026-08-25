@@ -1,4 +1,7 @@
 name: dsh
+volumes:
+  dsh_config:
+
 services:
   deepseek-harness:
     container_name: dsh-deepseek-harness
@@ -12,10 +15,3 @@ services:
       - no-new-privileges:true
     volumes:
       - dsh_config:/root/.dsh
-      - ${HOME}/code/testing:/root/code/testing
-      - ${HOME}/code/school/07-webdev2/memory-mall:/root/code/school/07-webdev2/memory-mall
-      - ${HOME}/code/personal/portfolio:/root/code/personal/portfolio
-      - ${HOME}/containers/dsh/:/root/containers/dsh/
-
-volumes:
-  dsh_config:
