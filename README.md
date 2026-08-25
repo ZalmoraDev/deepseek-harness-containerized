@@ -3,10 +3,9 @@ Simple Linux Bash script to install & run [DeepSeek Harness (DSH)](https://githu
 Prevent DSH from accessing unwanted directories by whitelisting specific volumes.  
 
 > [!CAUTION]
-> Currently work in progress  
-> Trying to fix UID mismatches between host and container root user
-> Improving created dsh binary with more options 
-> and compose.yml volume bind access control
+> Currently work in progress.  
+> Trying to fix UID mismatches between host and container root user.  
+> Improving created dsh binary with more options and compose.yml volume bind access control
 
 > [!IMPORTANT]
 > To avoid sandboxing issues, make sure to always run with 'Full Access'  
