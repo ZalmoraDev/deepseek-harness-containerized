@@ -2,6 +2,12 @@
 Simple Linux Bash script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with isolated workspaces through Docker.  
 Prevent DSH from accessing unwanted directories by whitelisting specific volumes.  
 
+> [!CAUTION]
+> Currently work in progress  
+> Trying to fix UID mismatches between host and container root user
+> Improving created dsh binary with more options 
+> and compose.yml volume bind access control
+
 > [!IMPORTANT]
 > To avoid sandboxing issues, make sure to always run with 'Full Access'  
 > Doing this is not a security concern as Docker provides isolation through volume mounting
