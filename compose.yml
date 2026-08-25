@@ -6,12 +6,15 @@ services:
   deepseek-harness:
     container_name: dsh-deepseek-harness
     build:
-      context: ./deepseek-harness
-      dockerfile: ../dsh.dockerfile
+      context: .
+      dockerfile: dsh.dockerfile
     ports:
       - "127.0.0.1:3080:3080"
     restart: no
     security_opt:
       - no-new-privileges:true
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
     volumes:
-      - dsh_config:/root/.dsh
+      - dsh_config:/home/node/.dsh
