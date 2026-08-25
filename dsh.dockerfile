@@ -13,6 +13,9 @@ RUN echo "Installing & running npm / pnpm commands..."
 RUN npm install -g node-gyp # Needed for plugin installation
 RUN pnpm install
 RUN pnpm run build
+# Own the app tree as node at build time so there is no startup chown race:
+# execs into the container right after `dsh start` run immediately as node.
+RUN chown -R node:node /home/node
 EXPOSE 3080
 
 # Fix for running as node oppsed to root

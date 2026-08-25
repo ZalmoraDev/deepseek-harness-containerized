@@ -9,9 +9,12 @@ if [ "$(id -u node 2>/dev/null)" != "$PUID" ] || [ "$(id -g node 2>/dev/null)" !
   delgroup node 2>/dev/null || true
   addgroup -g "$PGID" node
   adduser -D -H -u "$PUID" -G node node
+  # User was remapped: re-own the app tree for the new uid.
+  chown -R node:node /home/node
 fi
 
+# Only the mounted dirs need fixing (volume/bind mount start root-owned).
 mkdir -p /home/node/.dsh /home/node/containers/dsh
-chown -R node:node /home/node
+chown node:node /home/node/.dsh
 
 exec su-exec node "$@"
