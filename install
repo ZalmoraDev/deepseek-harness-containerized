@@ -129,8 +129,9 @@ case "\$1" in
       | grep -E '^[[:space:]]*-[[:space:]]' \
       | sed -E 's/^[[:space:]]*-[[:space:]]//; s/[[:space:]]*$//')
 
-    # Resolved absolute host paths (for matching against current directory)
+    # Resolved absolute host paths + modes (r/w) for matching against current dir
     vol_abs=()
+    vol_modes=()
     for bind in "\${raw_binds[@]}"; do
       hp="\${bind%%:*}"
       case "\$hp" in
@@ -139,6 +140,10 @@ case "\$1" in
       esac
       hp="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
       vol_abs+=("\$hp")
+      case "\$bind" in
+        *:ro) vol_modes+=(r) ;;
+        *)    vol_modes+=(w) ;;
+      esac
     done
 
     # Build checklist from current directory (hidden included, not . or ..)
@@ -150,13 +155,14 @@ case "\$1" in
       [ "\$item" = ".." ] && continue
       items+=("\$item")
       full="\$(pwd)/\$item"
-      c=0
-      for vp in "\${vol_abs[@]}"; do
+      st=""
+      for ((vi=0; vi<\${#vol_abs[@]}; vi++)); do
+        vp="\${vol_abs[\$vi]}"
         case "\$vp" in
-          "\$full"|"\$full/"*) c=1; break ;;
+          "\$full"|"\$full/"*) st="\${vol_modes[\$vi]}"; break ;;
         esac
       done
-      checked+=("\$c")
+      checked+=("\$st")
     done
     shopt -u dotglob
 
@@ -165,14 +171,20 @@ case "\$1" in
     while true; do
       clear
       echo "[DHS] Volume checklist for: \$(pwd)"
-      echo "  (UP/DOWN move, SPACE toggle, a=all, n=none, ENTER apply, q quit)"
+      echo "  (UP/DOWN move, SPACE/RIGHT cycle ''->r->w, LEFT reverse, a=all w, n=none, ENTER apply, q quit)"
       echo ""
       for i in "\${!items[@]}"; do
-        if [ "\${checked[\$i]}" = "1" ]; then mark="[x]"; else mark="[ ]"; fi
+        st="\${checked[\$i]}"
+        if [ "\$st" = "" ]; then mark="[ ]"; else mark="[\$st]"; fi
+        case "\$st" in
+          r) col="$ERROR"; endc="$ENDCOLOR" ;;
+          w) col="$SUCCESS"; endc="$ENDCOLOR" ;;
+          *) col=""; endc="" ;;
+        esac
         if [ "\$i" = "\$sel" ]; then
-          echo "  > \$mark \${items[\$i]}"
+          echo "  > \${col}\$mark \${items[\$i]}\${endc}"
         else
-          echo "    \$mark \${items[\$i]}"
+          echo "    \${col}\$mark \${items[\$i]}\${endc}"
         fi
       done
       IFS= read -rsn1 key
@@ -183,11 +195,25 @@ case "\$1" in
           case "\$key" in
             \$'\e[A') [ "\$sel" -gt 0 ] && sel=\$((sel-1)) ;;
             \$'\e[B') [ "\$sel" -lt \$((\${#items[@]}-1)) ] && sel=\$((sel+1)) ;;
+            \$'\e[C') case "\${checked[\$sel]}" in
+                        '') checked[\$sel]="r" ;;
+                        r)  checked[\$sel]="w" ;;
+                        w)  checked[\$sel]="" ;;
+                      esac ;;
+            \$'\e[D') case "\${checked[\$sel]}" in
+                        '') checked[\$sel]="w" ;;
+                        w)  checked[\$sel]="r" ;;
+                        r)  checked[\$sel]="" ;;
+                      esac ;;
           esac
           ;;
-        ' ') checked[\$sel]=\$((1-\${checked[\$sel]})) ;;
-        a) for i in "\${!checked[@]}"; do checked[\$i]=1; done ;;
-        n) for i in "\${!checked[@]}"; do checked[\$i]=0; done ;;
+        ' ') case "\${checked[\$sel]}" in
+               '') checked[\$sel]="r" ;;
+               r)  checked[\$sel]="w" ;;
+               w)  checked[\$sel]="" ;;
+             esac ;;
+        a) for i in "\${!checked[@]}"; do checked[\$i]="w"; done ;;
+        n) for i in "\${!checked[@]}"; do checked[\$i]=""; done ;;
         q) echo "Aborted."; exit 0 ;;
         '') break ;;
       esac
@@ -195,7 +221,7 @@ case "\$1" in
 
     # Apply: rebuild the bind list from selections
     new_binds=()
-    # Keep existing binds that are NOT tied to an unchecked item
+    # Pass 1: keep, drop, or re-mode existing binds
     for bind in "\${raw_binds[@]}"; do
       hp="\${bind%%:*}"
       # Named volumes (no slash, e.g. dsh_config) are always kept
@@ -205,41 +231,62 @@ case "\$1" in
       esac
       # Resolve literal \${HOME} / ~ so we compare absolute paths
       hp_abs="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
-      remove=0
+      hp_n="\${hp_abs%/}"
+      own=""
       for i in "\${!items[@]}"; do
-        if [ "\${checked[\$i]}" = "0" ]; then
-          full="\$(pwd)/\${items[\$i]}"
-          nf="\${full%/}"; nh="\${hp_abs%/}"
-          if [ "\$nh" = "\$nf" ] || [[ "\$nh" == "\$nf"/* ]]; then
-            remove=1; break
-          fi
+        full="\$(pwd)/\${items[\$i]}"
+        nf="\${full%/}"
+        if [ "\$hp_n" = "\$nf" ]; then
+          own="\${items[\$i]}"; st="\${checked[\$i]}"; break
+        fi
+        # Binds living under an unchecked item are dropped
+        if [ "\${checked[\$i]}" = "" ] && [[ "\$hp_n" == "\$nf"/* ]]; then
+          own="__remove__"; break
         fi
       done
-      [ "\$remove" = "1" ] && continue
-      new_binds+=("\$bind")
+      if [ "\$own" = "__remove__" ]; then continue; fi
+      if [ -z "\$own" ]; then
+        # Bind belongs to another directory: keep it verbatim
+        new_binds+=("\$bind"); continue
+      fi
+      case "\$st" in
+        "")  continue ;;
+        r)   case "\$bind" in
+               *:ro) new_binds+=("\$bind") ;;
+               *)    new_binds+=("\$bind:ro") ;;
+             esac ;;
+        w)   case "\$bind" in
+               *:ro) new_binds+=("\${bind%:ro}") ;;
+               *)    new_binds+=("\$bind") ;;
+             esac ;;
+      esac
     done
-    # Add checked items that are not already covered by an existing bind
+    # Pass 2: add binds for checked items that have none yet
     for i in "\${!items[@]}"; do
-      if [ "\${checked[\$i]}" = "1" ]; then
-        item="\${items[\$i]}"
-        host="\$(pwd)/\$item"
-        present=0
-        for b in "\${new_binds[@]}"; do
-          bh="\${b%%:*}"
-          bh="\$(echo "\$bh" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
-          bh="\${bh%/}"; hn="\${host%/}"
-          [ "\$bh" = "\$hn" ] && present=1 && break
-        done
-        [ "\$present" = "1" ] && continue
-        if [[ "\$host" == "\$HOME"/* ]]; then
-          rel="\${host#\$HOME/}"
-          hdisp="\\\${HOME}/\$rel"
-          cdisp="/root/\$rel"
-        else
-          hdisp="\$host"
-          cdisp="/root/\${host#/}"
-        fi
-        if [ -d "\$host" ]; then hdisp="\$hdisp/"; cdisp="\$cdisp/"; fi
+      st="\${checked[\$i]}"
+      [ "\$st" = "" ] && continue
+      item="\${items[\$i]}"
+      host="\$(pwd)/\$item"
+      present=0
+      for b in "\${new_binds[@]}"; do
+        bh="\${b%%:*}"
+        bh="\$(echo "\$bh" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+        bh="\${bh%/}"; hn="\${host%/}"
+        [ "\$bh" = "\$hn" ] && present=1 && break
+      done
+      [ "\$present" = "1" ] && continue
+      if [[ "\$host" == "\$HOME"/* ]]; then
+        rel="\${host#\$HOME/}"
+        hdisp="\\\${HOME}/\$rel"
+        cdisp="/root/\$rel"
+      else
+        hdisp="\$host"
+        cdisp="/root/\${host#/}"
+      fi
+      if [ -d "\$host" ]; then hdisp="\$hdisp/"; cdisp="\$cdisp/"; fi
+      if [ "\$st" = "r" ]; then
+        new_binds+=("\$hdisp:\$cdisp:ro")
+      else
         new_binds+=("\$hdisp:\$cdisp")
       fi
     done
@@ -315,6 +362,7 @@ dsh_print "$COMMAND  dsh stop$ENDCOLOR" "$INFO"
 dsh_print "$COMMAND  dsh restart$ENDCOLOR (load new plugins)" "$INFO"
 dsh_print "" "$INFO"
 dsh_print "$COMMAND  dsh help$ENDCOLOR (print help menu of the local home binary)" "$INFO"
+dsh_print "$COMMAND  dsh volume$ENDCOLOR (TUI for adding/removing RW & RO access to files/directories)" "$INFO"
 dsh_print "$COMMAND  dsh update$ENDCOLOR (pulls newest github version)" "$INFO"
 dsh_print "$COMMAND  dsh uninstall$ENDCOLOR (removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR)" "$INFO"
 dsh_print "" "$INFO"

@@ -15,3 +15,4 @@ services:
       - no-new-privileges:true
     volumes:
       - dsh_config:/root/.dsh
+      - ${HOME}/containers/dsh/:/root/containers/dsh/
