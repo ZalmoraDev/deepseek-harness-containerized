@@ -146,6 +146,30 @@ case "\$1" in
       esac
     done
 
+    # Detect a parent dir bind in compose.yml that would override any binds made here
+    parent_hp=""
+    parent_mode=""
+    parent_col=""
+    cur="\$(pwd)"
+    for bind in "\${raw_binds[@]}"; do
+      hp="\${bind%%:*}"
+      case "\$hp" in
+        */*) ;;
+        *) continue ;;
+      esac
+      hp="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+      if [ "\$hp" != "/" ]; then hp="\${hp%/}"; fi
+      [ -n "\$hp" ] || continue
+      # Keep the deepest (most specific) ancestor of the current directory
+      if [[ "\$cur" == "\$hp" || "\$cur" == "\$hp/"* ]] && (( \${#hp} > \${#parent_hp} )); then
+        parent_hp="\$hp"
+        case "\$bind" in
+          *:ro) parent_col="$ERROR"; parent_mode="read-only" ;;
+          *)    parent_col="$SUCCESS"; parent_mode="read-write" ;;
+        esac
+      fi
+    done
+
     # Build checklist from current directory (hidden included, not . or ..)
     items=()
     checked=()
@@ -172,6 +196,9 @@ case "\$1" in
       clear
       echo "[DHS] Volume checklist for: \$(pwd)"
       echo "  (UP/DOWN move, SPACE/RIGHT cycle ''->r->w, LEFT reverse, a=all w, n=none, ENTER apply, q quit)"
+      if [ -n "\$parent_hp" ]; then
+        echo "  \${parent_col}docker volume binds don't override parent binds, \$parent_hp is a \$parent_mode mounted parent directory, no child volume binds would work as the parent overrides it$ENDCOLOR"
+      fi
       echo ""
       for i in "\${!items[@]}"; do
         st="\${checked[\$i]}"
