@@ -112,7 +112,7 @@ case "\$1" in
     ;;
 
   enter)
-    docker exec -it dsh-deepseek-harness sh
+    docker exec -it -u node -w /home/node/app dsh-deepseek-harness sh
     ;;
   volume)
     COMPOSE_FILE="\$DSH_DIR/compose.yml"
@@ -337,12 +337,22 @@ case "\$1" in
     printf '%s\n' "\${out[@]}" > "\$COMPOSE_FILE"
     echo "[DHS] compose.yml volume binds updated."
     ;;
+
   help)
     echo "Usage: dsh { start | stop | restart | help | update | uninstall | enter | volume }"
     echo "       dsh [pnpm dsh args...] - passthrough to 'pnpm dsh' inside container"
     ;;
+
   *)
-    docker exec -it dsh-deepseek-harness pnpm dsh "\$@"
+    # Run as the same user the DSH server runs as (node, HOME=/home/node) so
+    # profile/plugin installs land in the persisted /home/node/.dsh profile
+    # directory. docker exec defaults to root, whose ~/.dsh is
+    # container-local and wiped on every container recreate.
+    if [ -t 0 ]; then
+      docker exec -it -u node -e HOME=/home/node -w /home/node/app dsh-deepseek-harness pnpm dsh "\$@"
+    else
+      docker exec -i -u node -e HOME=/home/node -w /home/node/app dsh-deepseek-harness pnpm dsh "\$@"
+    fi
     ;;
 esac
 EOF
