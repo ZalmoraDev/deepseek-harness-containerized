@@ -4,12 +4,10 @@ COPY deepseek-harness/ /home/node/app
 ENV CI=true
 
 # 1 essential, 2 recommended
-RUN echo "Installing system packages..."
 RUN apk add --no-cache \
     git pnpm socat su-exec nodejs-dev nano g++ \
     bash curl grep sed gawk ripgrep fd jq python3 make cmake
 
-RUN echo "Installing & running npm / pnpm commands..."
 RUN npm install -g node-gyp # Needed for plugin installation
 RUN pnpm install
 RUN pnpm run build

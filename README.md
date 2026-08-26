@@ -1,10 +1,9 @@
 # 🐋 Deepseek Harness Containerized 🐋
-Simple Linux Bash script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with isolated workspaces through Docker.  
+Linux script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with isolated workspaces through Docker.  
 Prevent DSH from accessing unwanted directories by whitelisting specific volumes.  
 
 > [!CAUTION]
-> Currently work in progress.  
-> I'm actively improving the created dsh binary with more options and compose.yml volume bind access control
+> Currently work in progress
 
 > [!IMPORTANT]
 > To avoid sandboxing issues, make sure to always run with 'Full Access'  
@@ -28,7 +27,7 @@ Prevent DSH from accessing unwanted directories by whitelisting specific volumes
    * Git
 2. Clone this repository
 3. Run `./install`
-4. See [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml) to configure DHS-workspace volumes access
+4. Run `dhs volume` to configure DHS-workspace volumes access, view results in [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml)
 5. See [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) to configure installed container packages
 
 ## 🚀 Usage

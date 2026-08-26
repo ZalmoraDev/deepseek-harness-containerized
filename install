@@ -70,6 +70,7 @@ if [ ! -d "$WRAPPER" ]; then
 fi
 mkdir -p "$BIN_DIR"
 
+
 # Wrapper script that will be copied to the users bin dir ($HOME/bin)
 cat > "$WRAPPER" << EOF
 #!/usr/bin/env bash
@@ -77,20 +78,37 @@ cat > "$WRAPPER" << EOF
 DSH_DIR="$DSH_DIR"
 
 case "\$1" in
+  help)
+    echo "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
+    echo
+    echo "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
+    echo "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
+    echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
+    echo
+    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
+    echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
+    echo "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR" "$INFO"
+    echo
+    echo "Only whilst actively running container:" "$INFO"
+    echo "${COMMAND}dsh [args...]$ENDCOLOR - passthrough to 'pnpm dsh' inside container" "$INFO"
+    echo "${COMMAND}dsh --help$ENDCOLOR - print help menu of the container DSH binary" "$INFO"
+    echo "${COMMAND}dsh enter$ENDCOLOR - docker exec into container as interactive shell" "$INFO"
+    ;;
+
   start)
-    echo "[DHS] Starting..."
+    echo "[dsh] Starting..."
     systemctl is-active --quiet docker || sudo systemctl start docker
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
-    echo "[DHS] http://127.0.0.1:3080"
+    echo "[dsh] http://127.0.0.1:3080"
     ;;
   stop)
-    echo "[DHS] Stopping..."
+    echo "[dsh] Stopping..."
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop 2>/dev/null
     ;;
   restart)
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop 2>/dev/null
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
-    echo "[DHS] http://127.0.0.1:3080"
+    echo "[dsh] http://127.0.0.1:3080"
     ;;
 
   update)
@@ -120,7 +138,7 @@ case "\$1" in
     # Locate the SECOND 'volumes:' line (the service-level bind list)
     second_vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
     if [ -z "\$second_vol_line" ]; then
-      echo "[DHS] No second 'volumes:' section found in \$COMPOSE_FILE"
+      echo "[dsh] No second 'volumes:' section found in \$COMPOSE_FILE"
       exit 1
     fi
 
@@ -194,7 +212,7 @@ case "\$1" in
     sel=0
     while true; do
       clear
-      echo "[DHS] Volume checklist for: \$(pwd)"
+      echo "[dsh] Volume checklist for: \$(pwd)"
       echo "  (UP/DOWN move, SPACE/RIGHT cycle ''->r->w, LEFT reverse, a=all w, n=none, ENTER apply, q quit)"
       if [ -n "\$parent_hp" ]; then
         echo "  \${parent_col}docker volume binds don't override parent binds, \$parent_hp is a \$parent_mode mounted parent directory, no child volume binds would work as the parent overrides it$ENDCOLOR"
@@ -305,10 +323,10 @@ case "\$1" in
       if [[ "\$host" == "\$HOME"/* ]]; then
         rel="\${host#\$HOME/}"
         hdisp="\\\${HOME}/\$rel"
-        cdisp="/root/\$rel"
+        cdisp="/home/node/\$rel"
       else
         hdisp="\$host"
-        cdisp="/root/\${host#/}"
+        cdisp="/home/node/\${host#/}"
       fi
       if [ -d "\$host" ]; then hdisp="\$hdisp/"; cdisp="\$cdisp/"; fi
       if [ "\$st" = "r" ]; then
@@ -335,12 +353,7 @@ case "\$1" in
     for b in "\${new_binds[@]}"; do out+=("      - \$b"); done
     for ((k=ei+1; k<\${#clines[@]}; k++)); do out+=("\${clines[\$k]}"); done
     printf '%s\n' "\${out[@]}" > "\$COMPOSE_FILE"
-    echo "[DHS] compose.yml volume binds updated."
-    ;;
-
-  help)
-    echo "Usage: dsh { start | stop | restart | help | update | uninstall | enter | volume }"
-    echo "       dsh [pnpm dsh args...] - passthrough to 'pnpm dsh' inside container"
+    echo "[dsh] compose.yml volume binds updated."
     ;;
 
   *)
@@ -380,7 +393,7 @@ elif [ "$(stat -c '%u' "$DSH_CONFIG_DIR")" != "$(id -u)" ]; then
 fi
 
 
-dsh_print "" "$SUCCESS"
+dsh_print "" "$IMPORTANT"
 dsh_print "IMPORTANT: Currently DSH is unable to be hosted on 0.0.0.0, since: 'it would expose remote code execution to the network'." "$IMPORTANT"
 dsh_print "This would only be a concern if ran on a local-machine," "$IMPORTANT"
 dsh_print "but since this is run in a docker container, which needs port 0.0.0.0 to properly function," "$IMPORTANT"
@@ -393,17 +406,17 @@ dsh_print "" "$IMPORTANT"
 
 
 
-dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
-dsh_print "$COMMAND  dsh start$ENDCOLOR" "$INFO"
-dsh_print "$COMMAND  dsh stop$ENDCOLOR" "$INFO"
-dsh_print "$COMMAND  dsh restart$ENDCOLOR (load new plugins)" "$INFO"
+dsh_print "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
 dsh_print "" "$INFO"
-dsh_print "$COMMAND  dsh help$ENDCOLOR (print help menu of the local home binary)" "$INFO"
-dsh_print "$COMMAND  dsh volume$ENDCOLOR (TUI for adding/removing RW & RO access to files/directories)" "$INFO"
-dsh_print "$COMMAND  dsh update$ENDCOLOR (pulls newest github version)" "$INFO"
-dsh_print "$COMMAND  dsh uninstall$ENDCOLOR (removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR)" "$INFO"
+dsh_print "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
+dsh_print "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
+dsh_print "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
+dsh_print "" "$INFO"
+dsh_print "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
+dsh_print "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
+dsh_print "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR" "$INFO"
 dsh_print "" "$INFO"
 dsh_print "Only whilst actively running container:" "$INFO"
-dsh_print "$COMMAND  dsh [options] [command] [args...]$ENDCOLOR (access DSH binary with access from host)" "$INFO"
-dsh_print "$COMMAND  dsh --help$ENDCOLOR (print help menu of the container DSH binary)" "$INFO"
-dsh_print "$COMMAND  dsh enter$ENDCOLOR (docker exec into container as interactive shell)" "$INFO"
+dsh_print "${COMMAND}dsh [args...]$ENDCOLOR - passthrough to 'pnpm dsh' inside container" "$INFO"
+dsh_print "${COMMAND}dsh --help$ENDCOLOR - print help menu of the container DSH binary" "$INFO"
+dsh_print "${COMMAND}dsh enter$ENDCOLOR - docker exec into container as interactive shell" "$INFO"
