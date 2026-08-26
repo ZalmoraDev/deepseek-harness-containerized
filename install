@@ -377,10 +377,10 @@ dsh_print "Created dsh wrapper binary at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
 
 dsh_print "Installing recommended plugin(s)" "$INFO"
 dsh start
-dsh plugin --profile web add dsh-plugin
+dsh plugin --profile web add dshmarket
 dsh plugin --profile web add dsh-cost-meter
 dsh stop
-dsh_print "Installed: dsh-plugin" "$SUCCESS"
+dsh_print "Installed: dsh-plugins" "$SUCCESS"
 
 
 # Create ~/.dsh if not present already
@@ -405,7 +405,7 @@ dsh_print "Doing this is NOT a security concern as Docker provides isolation thr
 dsh_print "" "$IMPORTANT"
 
 
-
+dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
 dsh_print "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
 dsh_print "" "$INFO"
 dsh_print "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
