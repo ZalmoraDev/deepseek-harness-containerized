@@ -60,13 +60,19 @@ dsh_print "Creating Docker container" "$INFO"
 docker compose create --quiet-pull 2>/dev/null
 
 
+dsh_print "Configuring DeepSeek Harness" "$INFO"
+mkdir -p ./config/dsh/profiles/web/
+cat ./templates/dsh/profiles/web/cordis.patch.yml > ./config/dsh/profiles/web/cordis.patch.yml
+dsh_print "Generated modified 'config/dsh/profiles/web/cordis.patch.yml'" "$SUCCESS"
+
+
 dsh_print "Configuring SearXNG" "$INFO"
-if [[ ! -f "./config/searxng/settings.yml" ]]; then
-  mkdir -p ./config/searxng
-  SECRET=$(openssl rand -hex 32)
-  sed "s/__SECRET_KEY__/$SECRET/" ./config/searxng/settings.yml.template > ./config/searxng/settings.yml
-  dsh_print "Generated config/searxng/settings.yml with random secret_key" "$SUCCESS"
-fi
+mkdir -p ./config/searxng
+SEARXNG_SERVER_SECRET=$(openssl rand -hex 32)
+# Substitute __SECRET_KEY__ with generated, overwrite searxng with this edited version
+sed "s/__SECRET_KEY__/$SEARXNG_SERVER_SECRET/" ./templates/searxng/settings.yml > ./config/searxng/settings.yml
+dsh_print "Generated modified 'config/searxng/settings.yml'" "$SUCCESS"
+
 
 
 DSH_DIR="$(pwd)"
@@ -383,7 +389,6 @@ EOF
 
 chmod a+x "$WRAPPER"
 dsh_print "Created dsh wrapper binary at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
-
 
 
 dsh_print "Installing recommended plugin(s)" "$INFO"

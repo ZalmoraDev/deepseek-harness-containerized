@@ -1,7 +1,7 @@
 # Read the documentation before extending the defaults:
 # https://docs.searxng.org/admin/settings/
 
-# ../install generates a __SECRET_KEY__ for you
+# ../install generates a SECRET_KEY for you
 
 use_default_settings: true
 

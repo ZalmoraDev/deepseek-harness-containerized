@@ -1,5 +1,6 @@
 .idea/
 
-.env
+config/dsh/
+config/searxng/
+
 deepseek-harness/
-config/searxng/settings.yml

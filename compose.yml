@@ -1,6 +1,4 @@
 name: dsh
-volumes:
-  dsh_config:
 
 services:
   searxng:
@@ -30,6 +28,5 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    volumes:
-      - dsh_config:/home/node/.dsh
-      # - ./config/dsh/cordis.patch.yml:/home/node/.dsh/profiles/web/cordis.patch.yml
+    volumes: # KEEP THE FIRST LINE. The rest `dsh volume` adds/removes automatically
+      - ./config/dsh:/home/node/.dsh

@@ -1,0 +1,13 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: web
+  config:
+    searchProvider: searxng
+
+- id: web-search-deepseek
+  disabled: true
+
+- id: web-search-searxng
+  config:
+    baseURL: http://searxng:8080
