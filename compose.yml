@@ -3,6 +3,16 @@ volumes:
   dsh_config:
 
 services:
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "127.0.0.1:8080:8080" # Also allow host access
+    environment:
+      - FORCE_OWNERSHIP=false
+    restart: unless-stopped
+    volumes:
+      - ./config/searxng:/etc/searxng # Uses existing config. Sets .json format, needed by dsh plugin 'dsh-searxng'
+
   deepseek-harness:
     container_name: dsh-deepseek-harness
     build:
@@ -10,11 +20,16 @@ services:
       dockerfile: dsh.dockerfile
     ports:
       - "127.0.0.1:3080:3080"
-    restart: no
+    depends_on:
+      - searxng
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080
+      - DSH_WEB_SEARCH_PROVIDER=searxng
+      - PUID=${PUID:-1000} # TODO: Pass by executing user UID, not always 1000
+      - PGID=${PGID:-1000} # TODO: Pass by executing user GID, not always 1000
+    restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    environment:
-      - PUID=${PUID:-1000}
-      - PGID=${PGID:-1000}
     volumes:
       - dsh_config:/home/node/.dsh
+      # - ./config/dsh/cordis.patch.yml:/home/node/.dsh/profiles/web/cordis.patch.yml

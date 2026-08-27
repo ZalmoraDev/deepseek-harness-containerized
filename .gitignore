@@ -2,3 +2,4 @@
 
 .env
 deepseek-harness/
+config/searxng/settings.yml

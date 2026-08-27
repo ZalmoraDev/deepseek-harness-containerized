@@ -32,6 +32,7 @@ missing_deps=()
 command -v docker >/dev/null 2>&1 || missing_deps+=("docker")
 docker compose version >/dev/null 2>&1 || missing_deps+=("docker compose")
 command -v git >/dev/null 2>&1 || missing_deps+=("git")
+command -v openssl >/dev/null 2>&1 || missing_deps+=("openSSL")
 
 if (( ${#missing_deps[@]} > 0 )); then
     dsh_print "Missing dependencies: ${missing_deps[*]}" "$ERROR"
@@ -58,6 +59,14 @@ docker compose build -q 2>/dev/null
 dsh_print "Creating Docker container" "$INFO"
 docker compose create --quiet-pull 2>/dev/null
 
+
+dsh_print "Configuring SearXNG" "$INFO"
+if [[ ! -f "./config/searxng/settings.yml" ]]; then
+  mkdir -p ./config/searxng
+  SECRET=$(openssl rand -hex 32)
+  sed "s/__SECRET_KEY__/$SECRET/" ./config/searxng/settings.yml.template > ./config/searxng/settings.yml
+  dsh_print "Generated config/searxng/settings.yml with random secret_key" "$SUCCESS"
+fi
 
 
 DSH_DIR="$(pwd)"
@@ -99,7 +108,8 @@ case "\$1" in
     echo "[dsh] Starting..."
     systemctl is-active --quiet docker || sudo systemctl start docker
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
-    echo "[dsh] http://127.0.0.1:3080"
+    echo "[dsh] DeepSeek Harness: http://127.0.0.1:3080"
+    echo "[dsh] SearXNG:          http://127.0.0.1:8080"
     ;;
   stop)
     echo "[dsh] Stopping..."
@@ -108,7 +118,8 @@ case "\$1" in
   restart)
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop 2>/dev/null
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
-    echo "[dsh] http://127.0.0.1:3080"
+    echo "[dsh] DeepSeek Harness: http://127.0.0.1:3080"
+    echo "[dsh] SearXNG:          http://127.0.0.1:8080"
     ;;
 
   update)
@@ -379,6 +390,7 @@ dsh_print "Installing recommended plugin(s)" "$INFO"
 dsh start
 dsh plugin --profile web add dshmarket
 dsh plugin --profile web add dsh-cost-meter
+dsh plugin --profile web add dsh-searxng
 dsh stop
 dsh_print "Installed: dsh-plugins" "$SUCCESS"
 

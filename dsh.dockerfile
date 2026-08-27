@@ -5,8 +5,8 @@ ENV CI=true
 
 # 1 essential, 2 recommended
 RUN apk add --no-cache \
-    git pnpm socat su-exec nodejs-dev nano g++ \
-    bash curl grep sed gawk ripgrep fd jq python3 make cmake
+    git pnpm socat su-exec nodejs-dev nano python3 py3-pip g++ \
+    bash curl grep sed gawk ripgrep fd jq make cmake yt-dlp
 
 RUN npm install -g node-gyp # Needed for plugin installation
 RUN pnpm install
