@@ -152,10 +152,12 @@ case "\$1" in
   volume)
     COMPOSE_FILE="\$DSH_DIR/compose.yml"
 
-    # Locate the SECOND 'volumes:' line (the service-level bind list)
-    second_vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
+    second_vol_line=\$(awk '/^ *volumes:.*KEEP THE FIRST LINE/{print NR; exit}' "\$COMPOSE_FILE")
     if [ -z "\$second_vol_line" ]; then
-      echo "[dsh] No second 'volumes:' section found in \$COMPOSE_FILE"
+      second_vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
+    fi
+    if [ -z "\$second_vol_line" ]; then
+      echo "[dsh] Could not locate the deepseek-harness 'volumes:' section in \$COMPOSE_FILE"
       exit 1
     fi
 
