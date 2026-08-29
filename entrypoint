@@ -4,7 +4,6 @@ set -e
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
 
-
 # Only the mounted dirs need fixing (volume/bind mount start root-owned).
 mkdir -p /home/node/.dsh
 chown -R node:node /home/node

@@ -16,9 +16,9 @@ RUN pnpm run build
 RUN chown -R node:node /home/node
 EXPOSE 3080
 
-# Fix for running as node oppsed to root
+# Normalize 'Line Feed' CRLF -> LF so a Windows git checkout does notleave a trailing \r on the shebang
 COPY entrypoint /entrypoint
-RUN chmod +x /entrypoint
+RUN sed -i 's/\r$//' /entrypoint && chmod +x /entrypoint
 ENTRYPOINT ["/entrypoint"]
 
 # `--expose-internals --import tsx/esm` is a reported issue
