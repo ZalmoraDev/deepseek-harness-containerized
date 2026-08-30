@@ -20,6 +20,25 @@ dsh_print() {
     echo "${color}[dsh]${ENDCOLOR} ${text}"
 }
 
+# Print the dsh help menu
+print_help() {
+    echo "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
+    echo
+    echo "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
+    echo "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
+    echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
+    echo
+    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
+    echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
+    echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script" "$INFO"
+    echo "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION./config/dsh/*$ENDCOLOR" "$INFO"
+    echo
+    echo "Only whilst actively running container:" "$INFO"
+    echo "${COMMAND}dsh [args...]$ENDCOLOR - passthrough to 'pnpm dsh' inside container" "$INFO"
+    echo "${COMMAND}dsh --help$ENDCOLOR - print help menu of the container DSH binary" "$INFO"
+    echo "${COMMAND}dsh enter$ENDCOLOR - docker exec into container as interactive shell" "$INFO"
+}
+
 
 
 # Fail / Interruption handling
@@ -92,8 +111,7 @@ cat > "$WRAPPER" << EOF
 
 DSH_DIR="$DSH_DIR"
 
-case "\$1" in
-  help)
+print_help() {
     echo "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
     echo
     echo "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
@@ -102,12 +120,18 @@ case "\$1" in
     echo
     echo "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
     echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
+    echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script to reconfigure dsh" "$INFO"
     echo "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR" "$INFO"
     echo
     echo "Only whilst actively running container:" "$INFO"
     echo "${COMMAND}dsh [args...]$ENDCOLOR - passthrough to 'pnpm dsh' inside container" "$INFO"
     echo "${COMMAND}dsh --help$ENDCOLOR - print help menu of the container DSH binary" "$INFO"
     echo "${COMMAND}dsh enter$ENDCOLOR - docker exec into container as interactive shell" "$INFO"
+}
+
+case "\$1" in
+  help)
+    print_help
     ;;
 
   start)
@@ -130,6 +154,10 @@ case "\$1" in
 
   update)
     cd "\$DSH_DIR" && git pull
+    ;;
+  reinstall)
+    echo "[dsh] Reinstalling..."
+    "\$DSH_DIR/install"
     ;;
   uninstall)
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" down -v --rmi local 2>/dev/null
@@ -426,17 +454,4 @@ dsh_print "" "$IMPORTANT"
 
 
 dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
-dsh_print "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
-dsh_print "" "$INFO"
-dsh_print "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
-dsh_print "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
-dsh_print "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
-dsh_print "" "$INFO"
-dsh_print "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
-dsh_print "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
-dsh_print "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR" "$INFO"
-dsh_print "" "$INFO"
-dsh_print "Only whilst actively running container:" "$INFO"
-dsh_print "${COMMAND}dsh [args...]$ENDCOLOR - passthrough to 'pnpm dsh' inside container" "$INFO"
-dsh_print "${COMMAND}dsh --help$ENDCOLOR - print help menu of the container DSH binary" "$INFO"
-dsh_print "${COMMAND}dsh enter$ENDCOLOR - docker exec into container as interactive shell" "$INFO"
+print_help
