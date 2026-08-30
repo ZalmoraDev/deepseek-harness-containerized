@@ -139,7 +139,7 @@ case "\$1" in
     systemctl is-active --quiet docker || sudo systemctl start docker
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
     echo "[dsh] DeepSeek Harness: http://127.0.0.1:3080"
-    echo "[dsh] SearXNG:          http://127.0.0.1:8080"
+    echo "[dsh] SearXNG:          http://127.0.0.1:3081"
     ;;
   stop)
     echo "[dsh] Stopping..."
@@ -149,7 +149,7 @@ case "\$1" in
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop 2>/dev/null
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
     echo "[dsh] DeepSeek Harness: http://127.0.0.1:3080"
-    echo "[dsh] SearXNG:          http://127.0.0.1:8080"
+    echo "[dsh] SearXNG:          http://127.0.0.1:3081"
     ;;
 
   update)

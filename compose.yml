@@ -3,8 +3,9 @@ name: dsh
 services:
   searxng:
     image: searxng/searxng:latest
+    container_name: dsh-searxng
     ports:
-      - "127.0.0.1:8080:8080" # Also allow host access
+      - "127.0.0.1:3081:8080" # Also allow host access
     environment:
       - FORCE_OWNERSHIP=false
     restart: unless-stopped
