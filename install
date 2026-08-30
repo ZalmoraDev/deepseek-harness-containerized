@@ -219,9 +219,11 @@ case "\$1" in
       st=""
       for ((vi=0; vi<\${#vol_abs[@]}; vi++)); do
         vp="\${vol_abs[\$vi]}"
-        case "\$vp" in
-          "\$full"|"\$full/"*) st="\${vol_modes[\$vi]}"; break ;;
-        esac
+        vp_n="\${vp%/}"
+        full_n="\${full%/}"
+        if [ "\$full_n" = "\$vp_n" ]; then
+          st="\${vol_modes[\$vi]}"; break
+        fi
       done
       checked+=("\$st")
     done
@@ -302,10 +304,6 @@ case "\$1" in
         nf="\${full%/}"
         if [ "\$hp_n" = "\$nf" ]; then
           own="\${items[\$i]}"; st="\${checked[\$i]}"; break
-        fi
-        # Binds living under an unchecked item are dropped
-        if [ "\${checked[\$i]}" = "" ] && [[ "\$hp_n" == "\$nf"/* ]]; then
-          own="__remove__"; break
         fi
       done
       if [ "\$own" = "__remove__" ]; then continue; fi
@@ -398,6 +396,9 @@ dsh start
 dsh plugin --profile web add dshmarket
 dsh plugin --profile web add dsh-cost-meter
 dsh plugin --profile web add dsh-searxng
+dsh plugin --profile web add dsh-context
+dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest
+dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=https://registry.npmjs.org/
 dsh stop
 dsh_print "Installed: dsh-plugins" "$SUCCESS"
 
