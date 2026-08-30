@@ -28,6 +28,7 @@ print_help() {
     echo "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
     echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
     echo
+    echo "${COMMAND}dsh verify$ENDCOLOR - check all volume mounts exist, remove missing entries" "$INFO"
     echo "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
     echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
     echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script" "$INFO"
@@ -111,6 +112,21 @@ cat > "$WRAPPER" << EOF
 
 DSH_DIR="$DSH_DIR"
 
+ERROR=$'\033[31m'
+SUCCESS=$'\033[32m'
+INFO=$'\033[34m'
+IMPORTANT=$'\033[35m'
+PROMPT=$'\033[1;34m'
+COMMAND=$'\033[33m'
+LOCATION=$'\033[36m'
+ENDCOLOR=$'\033[0m'
+
+dsh_print() {
+    local text="\$1"
+    local color="\$2"
+    echo "\${color}[dsh]\${ENDCOLOR} \${text}"
+}
+
 print_help() {
     echo "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
     echo
@@ -118,6 +134,7 @@ print_help() {
     echo "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
     echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
     echo
+    echo "${COMMAND}dsh verify$ENDCOLOR - check all volume mounts exist, remove missing entries" "$INFO"
     echo "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
     echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
     echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script to reconfigure dsh" "$INFO"
@@ -135,42 +152,47 @@ case "\$1" in
     ;;
 
   start)
-    echo "[dsh] Starting..."
+    dsh_print "Starting..." "\$INFO"
+    "\$HOME/bin/dsh" verify
     systemctl is-active --quiet docker || sudo systemctl start docker
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
-    echo "[dsh] DeepSeek Harness: http://127.0.0.1:3080"
-    echo "[dsh] SearXNG:          http://127.0.0.1:3081"
+    echo
+    dsh_print "DeepSeek Harness: http://127.0.0.1:3080" "\$SUCCESS"
+    dsh_print "SearXNG:          http://127.0.0.1:3081" "\$SUCCESS"
     ;;
   stop)
-    echo "[dsh] Stopping..."
+    dsh_print "Stopping..." "\$INFO"
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop 2>/dev/null
     ;;
   restart)
+    dsh_print "Restarting..." "\$INFO"
+    "\$HOME/bin/dsh" verify
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop 2>/dev/null
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
-    echo "[dsh] DeepSeek Harness: http://127.0.0.1:3080"
-    echo "[dsh] SearXNG:          http://127.0.0.1:3081"
+    echo
+    dsh_print "DeepSeek Harness: http://127.0.0.1:3080" "\$SUCCESS"
+    dsh_print "SearXNG:          http://127.0.0.1:3081" "\$SUCCESS"
     ;;
 
   update)
     cd "\$DSH_DIR" && git pull
     ;;
   reinstall)
-    echo "[dsh] Reinstalling..."
+    dsh_print "Reinstalling..." "\$INFO"
     "\$DSH_DIR/install"
     ;;
   uninstall)
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" down -v --rmi local 2>/dev/null
-    echo "Removed Docker files"
+    dsh_print "Removed Docker files" "\$SUCCESS"
     rm -rf "\$HOME/bin/dsh"
-    echo "Removed dsh home binary"
+    dsh_print "Removed dsh home binary" "\$SUCCESS"
 
     read -rp "Remove ~/.dsh? (y/N): " answer
     if [[ "\$answer" =~ ^[Yy]\$ ]]; then
       rm -rf "\$HOME/.dsh"
-      echo "Removed ~/.dsh"
+      dsh_print "Removed ~/.dsh" "\$SUCCESS"
     else
-      echo "Kept ~/.dsh"
+      dsh_print "Kept ~/.dsh" "\$INFO"
     fi
     ;;
 
@@ -185,7 +207,7 @@ case "\$1" in
       second_vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
     fi
     if [ -z "\$second_vol_line" ]; then
-      echo "[dsh] Could not locate the deepseek-harness 'volumes:' section in \$COMPOSE_FILE"
+      dsh_print "Could not locate the deepseek-harness 'volumes:' section in \$COMPOSE_FILE" "\$ERROR"
       exit 1
     fi
 
@@ -261,7 +283,7 @@ case "\$1" in
     sel=0
     while true; do
       clear
-      echo "[dsh] Volume checklist for: \$(pwd)"
+      dsh_print "Volume checklist for: \$(pwd)" "\$INFO"
       echo "  (UP/DOWN move, SPACE/RIGHT cycle ''->r->w, LEFT reverse, a=all w, n=none, ENTER apply, q quit)"
       if [ -n "\$parent_hp" ]; then
         echo "  \${parent_col}docker volume binds don't override parent binds, \$parent_hp is a \$parent_mode mounted parent directory, no child volume binds would work as the parent overrides it$ENDCOLOR"
@@ -398,7 +420,137 @@ case "\$1" in
     for b in "\${new_binds[@]}"; do out+=("      - \$b"); done
     for ((k=ei+1; k<\${#clines[@]}; k++)); do out+=("\${clines[\$k]}"); done
     printf '%s\n' "\${out[@]}" > "\$COMPOSE_FILE"
-    echo "[dsh] compose.yml volume binds updated."
+    dsh_print "compose.yml volume binds updated." "\$SUCCESS"
+    ;;
+
+  verify)
+    COMPOSE_FILE="\$DSH_DIR/compose.yml"
+
+    if [ ! -f "\$COMPOSE_FILE" ]; then
+      dsh_print "Error: compose.yml not found at \$COMPOSE_FILE" "\$ERROR"
+      exit 1
+    fi
+
+    echo
+    dsh_print "Verifying volume mounts in $LOCATION\$COMPOSE_FILE$ENDCOLOR" "\$INFO"
+
+    # Collect volume bind lines from the deepseek-harness service
+    # Find the line number of the second 'volumes:' block
+    vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
+    if [ -z "\$vol_line" ]; then
+      dsh_print "Could not locate the deepseek-harness 'volumes:' section" "\$ERROR"
+      exit 1
+    fi
+
+    # Extract bind entries: from the second volumes: line until the next top-level key
+    # Use sed to grab the block, grep for "- path:" lines, strip the leading "- "
+    raw_binds_text=\$(sed -n "\${vol_line},\$ { /^[^ ]/{q}; p }" "\$COMPOSE_FILE" \
+      | grep -E '^\s*-\s+\S.*:' \
+      | sed -E 's/^\s*-\s+//; s/\s*$//')
+
+    mapfile -t raw_binds <<< "\$raw_binds_text"
+    # Remove empty element if mapfile produced one from trailing newline
+    if [ \${#raw_binds[@]} -gt 0 ] && [ -z "\${raw_binds[-1]}" ]; then
+      unset 'raw_binds[${#raw_binds[@]}-1]'
+    fi
+
+    if [ \${#raw_binds[@]} -eq 0 ]; then
+      dsh_print "No volume mounts found." "\$INFO"
+      exit 0
+    fi
+
+    missing_binds=()
+    pass_count=0
+    missing_count=0
+
+    for bind in "\${raw_binds[@]}"; do
+      host_path="\${bind%%:*}"
+      # Expand \${HOME} and ~
+      host_path="\$(echo "\$host_path" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+      # Resolve relative paths against DSH_DIR
+      if [[ "\$host_path" != /* ]]; then
+        host_path="\$DSH_DIR/\$host_path"
+      fi
+
+      # Check existence (file or directory)
+      if [ -e "\$host_path" ]; then
+        pass_count=\$((pass_count + 1))
+        dsh_print "PASS - \$host_path" "\$SUCCESS"
+      else
+        missing_count=\$((missing_count + 1))
+        missing_binds+=("\$bind")
+        dsh_print "MISS - \$host_path" "\$ERROR"
+      fi
+    done
+
+    echo ""
+    dsh_print "Total: \$((pass_count + missing_count)) | Passed: \$pass_count | Missing: \$missing_count" "\$INFO"
+
+    if [ \$missing_count -eq 0 ]; then
+      dsh_print "All volume mounts are valid." "\$SUCCESS"
+      exit 0
+    fi
+
+    echo ""
+    read -rp "$(echo -e "\033[1;34m[dsh]\033[0m") Would you like to remove these missing volume entries from compose.yml? (y/n): " answer
+    if [[ ! "\$answer" =~ ^[Yy]\$ ]]; then
+      dsh_print "Aborted. No changes made." "\$INFO"
+      exit 0
+    fi
+
+    # Build a list of raw bind strings to remove (use original unexpanded form)
+    remove_set=()
+    for bind in "\${missing_binds[@]}"; do
+      remove_set+=("\$bind")
+    done
+
+    # Rewrite compose.yml, dropping missing bind lines
+    mapfile -t all_lines < "\$COMPOSE_FILE"
+    out_lines=()
+    in_volumes=0
+    vol_block_start=0
+
+    for ((li=0; li<\${#all_lines[@]}; li++)); do
+      line="\${all_lines[\$li]}"
+
+      # Detect second volumes: block start
+      if [[ "\$line" =~ ^[[:space:]]*volumes: ]]; then
+        vol_block_start=\$((vol_block_start + 1))
+        if [ "\$vol_block_start" -eq 2 ]; then
+          in_volumes=1
+          out_lines+=("\$line")
+          continue
+        fi
+      fi
+
+      # End of volumes block when we hit a non-indented, non-empty line
+      if [ "\$in_volumes" -eq 1 ]; then
+        # Check if this is a continuation of the volumes block
+        if [[ "\$line" =~ ^[[:space:]] ]] || [ -z "\$line" ]; then
+          # This is inside the volumes block — check if it's a bind entry to skip
+          bind_entry="\$(echo "\$line" | sed -E 's/^[[:space:]]*-[[:space:]]//; s/[[:space:]]*$//')"
+          skip=0
+          for rb in "\${remove_set[@]}"; do
+            if [ "\$bind_entry" = "\$rb" ]; then
+              skip=1
+              break
+            fi
+          done
+          if [ "\$skip" -eq 1 ]; then
+            continue  # Skip this line
+          fi
+          out_lines+=("\$line")
+          continue
+        else
+          in_volumes=0
+        fi
+      fi
+
+      out_lines+=("\$line")
+    done
+
+    printf '%s\n' "\${out_lines[@]}" > "\$COMPOSE_FILE"
+    dsh_print "Removed \$missing_count missing volume entry/entries from compose.yml." "\$SUCCESS"
     ;;
 
   *)
@@ -419,8 +571,8 @@ chmod a+x "$WRAPPER"
 dsh_print "Created dsh wrapper binary at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
 
 
-dsh_print "Installing recommended plugin(s)" "$INFO"
 dsh start
+dsh_print "Installing/Updating recommended plugin(s)" "$INFO"
 dsh plugin --profile web add dshmarket
 dsh plugin --profile web add dsh-cost-meter
 dsh plugin --profile web add dsh-searxng
@@ -441,17 +593,11 @@ elif [ "$(stat -c '%u' "$DSH_CONFIG_DIR")" != "$(id -u)" ]; then
 fi
 
 
-dsh_print "" "$IMPORTANT"
-dsh_print "IMPORTANT: Currently DSH is unable to be hosted on 0.0.0.0, since: 'it would expose remote code execution to the network'." "$IMPORTANT"
-dsh_print "This would only be a concern if ran on a local-machine," "$IMPORTANT"
-dsh_print "but since this is run in a docker container, which needs port 0.0.0.0 to properly function," "$IMPORTANT"
-dsh_print "this script's$LOCATION dsh.dockerfile$ENDCOLOR runs socat to proxy port 3080 on 0.0.0.0 to DSH's internal 127.0.0.1:3079," "$IMPORTANT"
-dsh_print "Please visit this link for more information: https://github.com/deepseek-ai/deepseek-harness/discussions/76" "$IMPORTANT"
-dsh_print "" "$IMPORTANT"
+echo
+dsh_print "IMPORTANT:" "$IMPORTANT"
 dsh_print "To avoid sandboxing issues, make sure to always run with 'Full Access'" "$IMPORTANT"
 dsh_print "Doing this is NOT a security concern as Docker provides isolation through volume mounting" "$IMPORTANT"
-dsh_print "" "$IMPORTANT"
-
+echo
 
 dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
 print_help

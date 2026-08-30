@@ -35,6 +35,7 @@ Prevent DSH from accessing unwanted directories by whitelisting specific volumes
 dsh start  
 dsh stop  
 dsh restart (load new plugins)  
+dsh verify (check volume mounts exist, remove missing entries)
 
 dsh app --help (must run, print help menu of the DSH binary)  
 dsh app [options] [command] [args...] (must run, wraps DSH binary to allow easy access from host)  

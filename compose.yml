@@ -31,3 +31,23 @@ services:
       - no-new-privileges:true
     volumes: # KEEP THE FIRST LINE. The rest `dsh volume` adds/removes automatically
       - ./config/dsh:/home/node/.dsh
+      - ${HOME}/code/school/07-webdev2/memory-mall/backend/:/home/node/code/school/07-webdev2/memory-mall/backend/
+      - ${HOME}/code/school/07-webdev2/memory-mall/compose.yml:/home/node/code/school/07-webdev2/memory-mall/compose.yml
+      - ${HOME}/code/school/07-webdev2/memory-mall/docs/:/home/node/code/school/07-webdev2/memory-mall/docs/
+      - ${HOME}/code/school/07-webdev2/memory-mall/.env.example:/home/node/code/school/07-webdev2/memory-mall/.env.example
+      - ${HOME}/code/school/07-webdev2/memory-mall/.env.production:/home/node/code/school/07-webdev2/memory-mall/.env.production
+      - ${HOME}/code/school/07-webdev2/memory-mall/.env.test:/home/node/code/school/07-webdev2/memory-mall/.env.test
+      - ${HOME}/code/school/07-webdev2/memory-mall/express.dockerfile:/home/node/code/school/07-webdev2/memory-mall/express.dockerfile
+      - ${HOME}/code/school/07-webdev2/memory-mall/frontend/:/home/node/code/school/07-webdev2/memory-mall/frontend/
+      - ${HOME}/code/school/07-webdev2/memory-mall/.git/:/home/node/code/school/07-webdev2/memory-mall/.git/
+      - ${HOME}/code/school/07-webdev2/memory-mall/.gitignore:/home/node/code/school/07-webdev2/memory-mall/.gitignore
+      - ${HOME}/code/school/07-webdev2/memory-mall/.idea/:/home/node/code/school/07-webdev2/memory-mall/.idea/
+      - ${HOME}/code/school/07-webdev2/memory-mall/nuxt.dockerfile:/home/node/code/school/07-webdev2/memory-mall/nuxt.dockerfile
+      - ${HOME}/code/school/07-webdev2/memory-mall/.prettierrc:/home/node/code/school/07-webdev2/memory-mall/.prettierrc
+      - ${HOME}/code/school/07-webdev2/memory-mall/README.md:/home/node/code/school/07-webdev2/memory-mall/README.md
+      - ${HOME}/code/school/07-webdev2/memory-mall/shared/:/home/node/code/school/07-webdev2/memory-mall/shared/
+      - ${HOME}/code/school/07-webdev2/memory-mall/.agents/:/home/node/code/school/07-webdev2/memory-mall/.agents/
+      - ${HOME}/containers/dsh/:/home/node/containers/dsh/
+      - ${HOME}/code/school/07-webdev2/memory-mall/node_modules/:/home/node/code/school/07-webdev2/memory-mall/node_modules/
+      - ${HOME}/code/school/07-webdev2/memory-mall/package.json:/home/node/code/school/07-webdev2/memory-mall/package.json
+      - ${HOME}/code/school/07-webdev2/memory-mall/package-lock.json:/home/node/code/school/07-webdev2/memory-mall/package-lock.json
