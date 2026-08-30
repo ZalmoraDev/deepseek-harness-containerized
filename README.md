@@ -19,7 +19,7 @@ Prevents DSH from accessing unwanted directories by whitelisting specific docker
    * Git
 2. Clone this repository
 3. Run `./install`
-4. Run `dhs volume` to configure DHS-workspace volumes access, view results in [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml)
+4. Run `dsh volume` to configure dsh-workspace volumes access, view results in [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml)
 5. See [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) to configure installed container packages
 
 ## 🚀 Usage
