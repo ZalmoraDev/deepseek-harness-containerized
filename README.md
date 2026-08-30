@@ -1,6 +1,8 @@
 # 🐋 Deepseek Harness Containerized 🐋
-Linux script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with isolated workspaces through Docker.  
-Prevent DSH from accessing unwanted directories by whitelisting specific volumes.  
+Linux script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with Searxng.  
+Providing isolated workspaces through Docker.  
+Creates wrapper script for easy modification and access.  
+Prevents DSH from accessing unwanted directories by whitelisting specific docker volume binds through `dsh volume`.  
 
 > [!CAUTION]
 > Currently work in progress
@@ -9,16 +11,6 @@ Prevent DSH from accessing unwanted directories by whitelisting specific volumes
 > To avoid sandboxing issues, make sure to always run with 'Full Access'  
 > Doing this is NOT a security concern as Docker provides isolation through volume mounting  
 > You can do this per chat or set by default in `Settings -> General -> Permission (Full Access)`
-
-> [!IMPORTANT]
-> Currently, DSH is unable to be hosted on 0.0.0.0,  
-> since: "it would expose remote code execution to the network".
-> 
-> This would only be a concern if ran on a local machine,  
-> but since this is run in a Docker container which needs port 0.0.0.0 to properly function, 
-> this script's [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) runs [socat](https://www.man7.org/linux/man-pages/man1/socat.1.html) to proxy port 3080 on 0.0.0.0 to DSH's internal 127.0.0.1:3079.  
-> 
-> For more information: https://github.com/deepseek-ai/deepseek-harness/discussions/76
 
 ## 📦 Install
 1. Make sure the following are installed:
@@ -31,18 +23,23 @@ Prevent DSH from accessing unwanted directories by whitelisting specific volumes
 5. See [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) to configure installed container packages
 
 ## 🚀 Usage
-```bash
-dsh start  
-dsh stop  
-dsh restart (load new plugins)  
-dsh verify (check volume mounts exist, remove missing entries)
+```
+dsh help - print this home binary's help menu
 
-dsh app --help (must run, print help menu of the DSH binary)  
-dsh app [options] [command] [args...] (must run, wraps DSH binary to allow easy access from host)  
-dsh enter (must run, docker exec into the container with a shell)  
+dsh start - start dsh container
+dsh stop - stop dsh container
+dsh restart - load new plugins
 
-dsh update (pulls newest github version)  
-dsh uninstall (removes Docker files, asks confirmation for ~/.dsh)
+dsh verify - check all volume mounts exist, remove missing entries
+dsh volume - TUI for adding/removing RW & RO access to files/directories
+dsh update - pulls newest github version
+dsh reinstall - reruns install script
+dsh uninstall - removes Docker files, asks confirmation for ./config/dsh/*
+
+Only whilst actively running container:
+dsh [args...] - passthrough to 'pnpm dsh' inside container
+dsh --help - print help menu of the container DSH binary
+dsh enter - docker exec into container as interactive shell
 ```
 
 ## 🤝 Contributing
