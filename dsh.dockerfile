@@ -3,10 +3,12 @@ WORKDIR /home/node/app
 COPY deepseek-harness/ /home/node/app
 ENV CI=true
 
-# 1 essential, 2 recommended
+# 1 essential, 2 recommended, 3 database acces, 4 compression
 RUN apk add --no-cache \
     git pnpm socat su-exec nodejs-dev nano python3 py3-pip g++ \
-    bash curl grep sed gawk ripgrep fd jq make cmake yt-dlp
+    bash curl docker grep sed gawk ripgrep fd jq make cmake yt-dlp \
+    postgresql-client postgresql-dev sqlite sqlite-dev \
+    xz zstd zstd-dev
 
 RUN npm install -g node-gyp # Needed for plugin installation
 RUN pnpm install

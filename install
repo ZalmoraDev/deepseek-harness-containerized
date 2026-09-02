@@ -78,12 +78,12 @@ docker compose build -q 2>/dev/null
 
 dsh_print "Creating Docker container" "$INFO"
 docker compose create --quiet-pull 2>/dev/null
-
+echo
 
 dsh_print "Configuring DeepSeek Harness" "$INFO"
 mkdir -p ./config/dsh/profiles/web/
 cat ./templates/dsh/profiles/web/cordis.patch.yml > ./config/dsh/profiles/web/cordis.patch.yml
-dsh_print "Generated modified 'config/dsh/profiles/web/cordis.patch.yml'" "$SUCCESS"
+dsh_print "Generated modified$LOCATION config/dsh/profiles/web/cordis.patch.yml$ENDCOLOR" "$SUCCESS"
 
 
 dsh_print "Configuring SearXNG" "$INFO"
@@ -91,7 +91,7 @@ mkdir -p ./config/searxng
 SEARXNG_SERVER_SECRET=$(openssl rand -hex 32)
 # Substitute __SECRET_KEY__ with generated, overwrite searxng with this edited version
 sed "s/__SECRET_KEY__/$SEARXNG_SERVER_SECRET/" ./templates/searxng/settings.yml > ./config/searxng/settings.yml
-dsh_print "Generated modified 'config/searxng/settings.yml'" "$SUCCESS"
+dsh_print "Generated modified$LOCATION config/searxng/settings.yml$ENDCOLOR" "$SUCCESS"
 
 
 
@@ -569,18 +569,20 @@ EOF
 
 chmod a+x "$WRAPPER"
 dsh_print "Created dsh wrapper binary at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
+echo
 
-
-dsh start
-dsh_print "Installing/Updating recommended plugin(s)" "$INFO"
-dsh plugin --profile web add dshmarket
-dsh plugin --profile web add dsh-cost-meter
-dsh plugin --profile web add dsh-searxng
-dsh plugin --profile web add dsh-context
-dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest
-dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=https://registry.npmjs.org/
-dsh stop
-dsh_print "Installed: dsh-plugins" "$SUCCESS"
+dsh start >/dev/null 2>&1
+dsh_print "Installing & Updating recommended plugins (may take a while)" "$INFO"
+dsh plugin --profile web add dshmarket >/dev/null 2>&1
+dsh plugin --profile web add dsh-searxng >/dev/null 2>&1
+dsh plugin --profile web add dsh-context >/dev/null 2>&1
+dsh plugin --profile web add dsh-cost-meter >/dev/null 2>&1
+dsh plugin --profile web add dsh-strata >/dev/null 2>&1
+dsh plugin --profile web add oss-prompt-optimizer >/dev/null 2>&1
+dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest >/dev/null 2>&1
+dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=https://registry.npmjs.org/ >/dev/null 2>&1
+dsh stop >/dev/null 2>&1
+dsh_print "Installed dsh plugins" "$SUCCESS"
 
 
 # Create ~/.dsh if not present already
@@ -592,12 +594,14 @@ elif [ "$(stat -c '%u' "$DSH_CONFIG_DIR")" != "$(id -u)" ]; then
   dsh_print "Changed $LOCATION~/.dsh$ENDCOLOR ownership from root (assigned by DSH build) to your user '$(WHOAMI)'" "$SUCCESS"
 fi
 
-
+echo
+echo "-----------------------------------------------------------------------------------------------"
+echo
+dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
 echo
 dsh_print "IMPORTANT:" "$IMPORTANT"
 dsh_print "To avoid sandboxing issues, make sure to always run with 'Full Access'" "$IMPORTANT"
 dsh_print "Doing this is NOT a security concern as Docker provides isolation through volume mounting" "$IMPORTANT"
 echo
 
-dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
 print_help
