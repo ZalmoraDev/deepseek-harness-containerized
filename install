@@ -29,7 +29,7 @@ print_help() {
     echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
     echo
     echo "${COMMAND}dsh verify$ENDCOLOR - check all volume mounts exist, remove missing entries" "$INFO"
-    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
+    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for mounting a parent directory and blacklisting (shadowing) files/directories" "$INFO"
     echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
     echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script" "$INFO"
     echo "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION./config/dsh/*$ENDCOLOR" "$INFO"
@@ -135,7 +135,7 @@ print_help() {
     echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
     echo
     echo "${COMMAND}dsh verify$ENDCOLOR - check all volume mounts exist, remove missing entries" "$INFO"
-    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for adding/removing RW & RO access to files/directories" "$INFO"
+    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for mounting a parent directory and blacklisting (shadowing) files/directories" "$INFO"
     echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
     echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script to reconfigure dsh" "$INFO"
     echo "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION~/.dsh$ENDCOLOR" "$INFO"
@@ -211,53 +211,96 @@ case "\$1" in
       exit 1
     fi
 
-    # Raw bind lines (preserve \${HOME}) from the second volumes: to EOF
+    # Raw volume lines (preserve \${HOME}) from the second volumes: to EOF
     mapfile -t raw_binds < <(tail -n +"\$second_vol_line" "\$COMPOSE_FILE" \
       | grep -E '^[[:space:]]*-[[:space:]]' \
       | sed -E 's/^[[:space:]]*-[[:space:]]//; s/[[:space:]]*$//')
 
-    # Resolved absolute host paths + modes (r/w) for matching against current dir
-    vol_abs=()
-    vol_modes=()
+    # Classify every line (blacklist logic):
+    #   named  -> named volume, kept verbatim
+    #   host   -> host bind, b_mode r (ro) / w (rw)
+    #   shadow -> blacklisting bind, b_mode x:
+    #             files   -> /dev/null bound over the item's container path
+    #             dirs    -> bare anonymous volume at the container path
+    # \${HOME} cannot be part of a shadow: compose expands it on the host, so
+    # the line would bind/mount at a path that does not exist in the
+    # container. Legacy bare \${HOME}/... shadow lines are recognized when
+    # reading and normalized on apply.
+    b_kind=(); b_host=(); b_cont=(); b_mode=()
     for bind in "\${raw_binds[@]}"; do
-      hp="\${bind%%:*}"
-      case "\$hp" in
-        */*) ;;
-        *) continue ;;
-      esac
-      hp="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
-      vol_abs+=("\$hp")
       case "\$bind" in
-        *:ro) vol_modes+=(r) ;;
-        *)    vol_modes+=(w) ;;
+        *:*)
+          hp="\${bind%%:*}"
+          case "\$hp" in
+            */*) ;;
+            *) b_kind+=("named"); b_host+=(""); b_cont+=(""); b_mode+=(""); continue ;;
+          esac
+          cp="\${bind#*:}"
+          mode="w"
+          case "\$cp" in
+            *:ro) cp="\${cp%:ro}"; mode="r" ;;
+          esac
+          if [ "\$cp" != "/" ]; then cp="\${cp%/}"; fi
+          if [ "\$hp" = "/dev/null" ]; then
+            # blacklisted file: the host null device bound over the item
+            b_kind+=("shadow"); b_host+=(""); b_cont+=("\$cp"); b_mode+=("x")
+            continue
+          fi
+          hp="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+          if [ "\$hp" != "/" ]; then hp="\${hp%/}"; fi
+          b_kind+=("host"); b_host+=("\$hp"); b_cont+=("\$cp"); b_mode+=("\$mode")
+          ;;
+        /*|'\${HOME}'*|\\~*)
+          sp="\$(echo "\$bind" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+          if [ "\$sp" != "/" ]; then sp="\${sp%/}"; fi
+          b_kind+=("shadow"); b_host+=(""); b_cont+=("\$sp"); b_mode+=("x")
+          ;;
+        *) b_kind+=("named"); b_host+=(""); b_cont+=(""); b_mode+=("") ;;
       esac
     done
 
-    # Detect a parent dir bind in compose.yml that would override any binds made here
-    parent_hp=""
-    parent_mode=""
-    parent_col=""
-    cur="\$(pwd)"
-    for bind in "\${raw_binds[@]}"; do
-      hp="\${bind%%:*}"
-      case "\$hp" in
-        */*) ;;
-        *) continue ;;
+    # Map a shadow (anonymous volume) path back to its host path:
+    # 1. through the deepest host bind whose container path contains it,
+    # 2. through the default \${HOME} <-> /home/node mapping,
+    # 3. else treat the line as a \${HOME}-prefixed host path (legacy form).
+    resolve_shadow() {
+      local sp="\$1" j hp cp best="" best_len=-1
+      for j in "\${!b_kind[@]}"; do
+        [ "\${b_kind[\$j]}" = "host" ] || continue
+        hp="\${b_host[\$j]}"; cp="\${b_cont[\$j]}"
+        if [ "\$sp" = "\$cp" ] || [[ "\$sp" == "\$cp/"* ]]; then
+          if (( \${#cp} > best_len )); then best="\$hp\${sp#\$cp}"; best_len=\${#cp}; fi
+        fi
+      done
+      if [ -n "\$best" ]; then echo "\$best"; return; fi
+      if [ "\$sp" = "/home/node" ]; then echo "\$HOME"; return; fi
+      case "\$sp" in
+        /home/node/*) echo "\$HOME/\${sp#/home/node/}" ;;
+        *)            echo "\$sp" ;;
       esac
-      hp="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
-      if [ "\$hp" != "/" ]; then hp="\${hp%/}"; fi
+    }
+
+    # Detect the deepest mounted parent directory of the current directory.
+    # Its state decides what children inherit: r/w through its bind, or
+    # nothing when the parent itself is blacklisted with a shadow bind (x).
+    parent_hp=""
+    parent_cp=""
+    parent_mode=""
+    cur="\$(pwd)"
+    for i in "\${!b_kind[@]}"; do
+      [ "\${b_kind[\$i]}" = "named" ] && continue
+      hp="\${b_host[\$i]}"
+      if [ "\${b_kind[\$i]}" = "shadow" ]; then hp="\$(resolve_shadow "\${b_cont[\$i]}")"; fi
       [ -n "\$hp" ] || continue
       # Keep the deepest (most specific) ancestor of the current directory
       if [[ "\$cur" == "\$hp" || "\$cur" == "\$hp/"* ]] && (( \${#hp} > \${#parent_hp} )); then
-        parent_hp="\$hp"
-        case "\$bind" in
-          *:ro) parent_col="$ERROR"; parent_mode="read-only" ;;
-          *)    parent_col="$SUCCESS"; parent_mode="read-write" ;;
-        esac
+        parent_hp="\$hp"; parent_cp="\${b_cont[\$i]}"; parent_mode="\${b_mode[\$i]}"
       fi
     done
 
     # Build checklist from current directory (hidden included, not . or ..)
+    # States: '' no explicit bind (inherits the mounted parent), r ro bind,
+    #         w rw bind, x blacklisted via an anonymous shadow bind
     items=()
     checked=()
     shopt -s dotglob
@@ -267,14 +310,16 @@ case "\$1" in
       items+=("\$item")
       full="\$(pwd)/\$item"
       st=""
-      for ((vi=0; vi<\${#vol_abs[@]}; vi++)); do
-        vp="\${vol_abs[\$vi]}"
-        vp_n="\${vp%/}"
-        full_n="\${full%/}"
-        if [ "\$full_n" = "\$vp_n" ]; then
-          st="\${vol_modes[\$vi]}"; break
-        fi
+      for i in "\${!b_kind[@]}"; do
+        [ "\${b_kind[\$i]}" = "shadow" ] || continue
+        if [ "\$(resolve_shadow "\${b_cont[\$i]}")" = "\$full" ]; then st="x"; break; fi
       done
+      if [ -z "\$st" ]; then
+        for i in "\${!b_kind[@]}"; do
+          [ "\${b_kind[\$i]}" = "host" ] || continue
+          if [ "\${b_host[\$i]}" = "\$full" ]; then st="\${b_mode[\$i]}"; break; fi
+        done
+      fi
       checked+=("\$st")
     done
     shopt -u dotglob
@@ -284,17 +329,24 @@ case "\$1" in
     while true; do
       clear
       dsh_print "Volume checklist for: \$(pwd)" "\$INFO"
-      echo "  (UP/DOWN move, SPACE/RIGHT cycle ''->r->w, LEFT reverse, a=all w, n=none, ENTER apply, q quit)"
+      echo "  (UP/DOWN move, SPACE/RIGHT cycle ''->r->w->x, LEFT reverse, a=all w, n=none, ENTER apply, q quit)"
       if [ -n "\$parent_hp" ]; then
-        echo "  \${parent_col}docker volume binds don't override parent binds, \$parent_hp is a \$parent_mode mounted parent directory, no child volume binds would work as the parent overrides it$ENDCOLOR"
+        case "\$parent_mode" in
+          w) echo "  ${SUCCESS}\$parent_hp is a read-write mounted parent directory, everything below it is already accessible in the container, mark items [x] to blacklist (shadow) them$ENDCOLOR" ;;
+          r) echo "  ${INFO}\$parent_hp is a read-only mounted parent directory, everything below it is already readable in the container, [w] grants an item its own read-write bind, [x] blacklists (shadows) it$ENDCOLOR" ;;
+          x) echo "  ${ERROR}\$parent_hp is a blacklisted [x] parent, an anonymous volume shadows it so nothing below it is accessible in the container$ENDCOLOR" ;;
+        esac
+      else
+        echo "  ${INFO}no mounted parent directory found, items only reach the container through their own [r]/[w] bind$ENDCOLOR"
       fi
       echo ""
       for i in "\${!items[@]}"; do
         st="\${checked[\$i]}"
         if [ "\$st" = "" ]; then mark="[ ]"; else mark="[\$st]"; fi
         case "\$st" in
-          r) col="$ERROR"; endc="$ENDCOLOR" ;;
+          r) col="$INFO"; endc="$ENDCOLOR" ;;
           w) col="$SUCCESS"; endc="$ENDCOLOR" ;;
+          x) col="$ERROR"; endc="$ENDCOLOR" ;;
           *) col=""; endc="" ;;
         esac
         if [ "\$i" = "\$sel" ]; then
@@ -314,10 +366,12 @@ case "\$1" in
             \$'\e[C') case "\${checked[\$sel]}" in
                         '') checked[\$sel]="r" ;;
                         r)  checked[\$sel]="w" ;;
-                        w)  checked[\$sel]="" ;;
+                        w)  checked[\$sel]="x" ;;
+                        x)  checked[\$sel]="" ;;
                       esac ;;
             \$'\e[D') case "\${checked[\$sel]}" in
-                        '') checked[\$sel]="w" ;;
+                        '') checked[\$sel]="x" ;;
+                        x)  checked[\$sel]="w" ;;
                         w)  checked[\$sel]="r" ;;
                         r)  checked[\$sel]="" ;;
                       esac ;;
@@ -326,7 +380,8 @@ case "\$1" in
         ' ') case "\${checked[\$sel]}" in
                '') checked[\$sel]="r" ;;
                r)  checked[\$sel]="w" ;;
-               w)  checked[\$sel]="" ;;
+               w)  checked[\$sel]="x" ;;
+               x)  checked[\$sel]="" ;;
              esac ;;
         a) for i in "\${!checked[@]}"; do checked[\$i]="w"; done ;;
         n) for i in "\${!checked[@]}"; do checked[\$i]=""; done ;;
@@ -335,72 +390,124 @@ case "\$1" in
       esac
     done
 
-    # Apply: rebuild the bind list from selections
+    # Apply: rebuild the bind list from selections (blacklist/shadow logic)
     new_binds=()
-    # Pass 1: keep, drop, or re-mode existing binds
-    for bind in "\${raw_binds[@]}"; do
-      hp="\${bind%%:*}"
-      # Named volumes (no slash, e.g. dsh_config) are always kept
-      case "\$hp" in
-        */*) ;;
-        *) new_binds+=("\$bind"); continue ;;
-      esac
-      # Resolve literal \${HOME} / ~ so we compare absolute paths
-      hp_abs="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
-      hp_n="\${hp_abs%/}"
-      own=""
-      for i in "\${!items[@]}"; do
-        full="\$(pwd)/\${items[\$i]}"
-        nf="\${full%/}"
-        if [ "\$hp_n" = "\$nf" ]; then
-          own="\${items[\$i]}"; st="\${checked[\$i]}"; break
+
+    # host -> container targets of existing host binds, so re-marked items
+    # keep their original mount point inside the container
+    map_host=(); map_cont=()
+    for i in "\${!b_kind[@]}"; do
+      [ "\${b_kind[\$i]}" = "host" ] || continue
+      h="\${b_host[\$i]}"; c="\${b_cont[\$i]}"
+      dup=0
+      for j in "\${!map_host[@]}"; do [ "\${map_host[\$j]}" = "\$h" ] && dup=1 && break; done
+      [ "\$dup" = "1" ] || { map_host+=("\$h"); map_cont+=("\$c"); }
+    done
+
+    # Container path for a host path: known target of an existing bind,
+    # else through the deepest mounted parent, else the default
+    # \${HOME} <-> /home/node convention
+    cont_for() {
+      local full="\${1%/}" j bh="" bc="" hp2 best=-1 sfx
+      for j in "\${!map_host[@]}"; do
+        if [ "\${map_host[\$j]}" = "\$full" ]; then echo "\${map_cont[\$j]}"; return; fi
+      done
+      for j in "\${!b_kind[@]}"; do
+        # only real host binds provide container mount targets
+        [ "\${b_kind[\$j]}" = "host" ] || continue
+        hp2="\${b_host[\$j]}"
+        if [[ "\$full" == "\$hp2" || "\$full" == "\$hp2/"* ]] && (( \${#hp2} > best )); then
+          best=\${#hp2}; bh="\$hp2"; bc="\${b_cont[\$j]}"
         fi
       done
-      if [ "\$own" = "__remove__" ]; then continue; fi
-      if [ -z "\$own" ]; then
-        # Bind belongs to another directory: keep it verbatim
-        new_binds+=("\$bind"); continue
+      if [ -n "\$bh" ]; then
+        sfx="\$full"
+        sfx="\${sfx#\$bh}"
+        if [ "\$bh" = "/" ]; then sfx="/\$sfx"; fi
+        echo "\$bc\$sfx"
+        return
       fi
-      case "\$st" in
-        "")  continue ;;
-        r)   case "\$bind" in
-               *:ro) new_binds+=("\$bind") ;;
-               *)    new_binds+=("\$bind:ro") ;;
+      if [[ "\$full" == "\$HOME" ]]; then echo "/home/node"; return; fi
+      if [[ "\$full" == "\$HOME/"* ]]; then echo "/home/node/\${full#"\$HOME/"}"; return; fi
+      echo "/home/node\${full}"
+    }
+
+    # Pass 1: drop every line owned by a listed item of this directory, except
+    # host binds whose state is still r/w (kept in place, :ro adjusted).
+    # Their state alone decides what gets re-emitted in pass 2.
+    for i in "\${!b_kind[@]}"; do
+      kind="\${b_kind[\$i]}"
+      if [ "\$kind" = "named" ]; then new_binds+=("\${raw_binds[\$i]}"); continue; fi
+      hp="\${b_host[\$i]}"
+      if [ "\$kind" = "shadow" ]; then hp="\$(resolve_shadow "\${b_cont[\$i]}")"; fi
+      own=""; st=""
+      for j in "\${!items[@]}"; do
+        full="\$(pwd)/\${items[\$j]}"
+        if [ "\$hp" = "\$full" ]; then own="1"; st="\${checked[\$j]}"; break; fi
+      done
+      if [ -z "\$own" ]; then
+        # Line belongs to another directory or is a named volume: keep verbatim
+        new_binds+=("\${raw_binds[\$i]}"); continue
+      fi
+      if [ "\$kind" = "host" ]; then
+        case "\$st" in
+          r) case "\${raw_binds[\$i]}" in
+               *:ro) new_binds+=("\${raw_binds[\$i]}") ;;
+               *)    new_binds+=("\${raw_binds[\$i]}:ro") ;;
              esac ;;
-        w)   case "\$bind" in
-               *:ro) new_binds+=("\${bind%:ro}") ;;
-               *)    new_binds+=("\$bind") ;;
+          w) case "\${raw_binds[\$i]}" in
+               *:ro) new_binds+=("\${raw_binds[\$i]%:ro}") ;;
+               *)    new_binds+=("\${raw_binds[\$i]}") ;;
              esac ;;
-      esac
+        esac
+      fi
     done
-    # Pass 2: add binds for checked items that have none yet
-    for i in "\${!items[@]}"; do
-      st="\${checked[\$i]}"
-      [ "\$st" = "" ] && continue
-      item="\${items[\$i]}"
+
+    # Pass 2: emit one canonical line per selected item that has none yet.
+    # A shadow (x) is written against the CONTAINER path (/home/node/...) —
+    # where the parent bind exposes the item — so the mount actually covers
+    # it: files get the host's /dev/null bound over them, directories get a
+    # bare anonymous volume (a file cannot be mounted over a directory).
+    # \${HOME} cannot be used in a shadow: compose expands it on the host,
+    # hiding nothing. The host side of r/w binds keeps the literal
+    # \${HOME} prefix.
+    for j in "\${!items[@]}"; do
+      st="\${checked[\$j]}"
+      [ -n "\$st" ] || continue
+      item="\${items[\$j]}"
       host="\$(pwd)/\$item"
       present=0
       for b in "\${new_binds[@]}"; do
-        bh="\${b%%:*}"
+        case "\$b" in
+          *:*) bh="\${b%%:*}" ;;
+          *)   bh="" ;;
+        esac
+        case "\$bh" in
+          */*) ;;
+          *) bh="" ;;
+        esac
+        [ -n "\$bh" ] || continue
         bh="\$(echo "\$bh" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
-        bh="\${bh%/}"; hn="\${host%/}"
-        [ "\$bh" = "\$hn" ] && present=1 && break
+        bh="\${bh%/}"
+        [ "\$bh" = "\$host" ] && present=1 && break
       done
       [ "\$present" = "1" ] && continue
-      if [[ "\$host" == "\$HOME"/* ]]; then
-        rel="\${host#\$HOME/}"
+      ct="\$(cont_for "\$host")"
+      if [[ "\$host" == "\$HOME/"* ]]; then
+        rel="\${host#"\$HOME/"}"
         hdisp="\\\${HOME}/\$rel"
-        cdisp="/home/node/\$rel"
       else
         hdisp="\$host"
-        cdisp="/home/node/\${host#/}"
       fi
-      if [ -d "\$host" ]; then hdisp="\$hdisp/"; cdisp="\$cdisp/"; fi
-      if [ "\$st" = "r" ]; then
-        new_binds+=("\$hdisp:\$cdisp:ro")
-      else
-        new_binds+=("\$hdisp:\$cdisp")
-      fi
+      case "\$st" in
+        x) if [ -d "\$host" ]; then
+             new_binds+=("\$ct")
+           else
+             new_binds+=("/dev/null:\$ct")
+           fi ;;
+        r) new_binds+=("\$hdisp:\$ct:ro") ;;
+        w) new_binds+=("\$hdisp:\$ct") ;;
+      esac
     done
 
     # Rewrite the second volumes: section in compose.yml

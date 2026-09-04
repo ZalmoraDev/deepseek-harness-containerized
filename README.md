@@ -2,7 +2,7 @@
 Linux script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with Searxng.  
 Providing isolated workspaces through Docker.  
 Creates wrapper script for easy modification and access.  
-Prevents DSH from accessing unwanted directories by whitelisting specific docker volume binds through `dsh volume`.  
+Prevents DSH from accessing unwanted files by blacklisting them with anonymous shadow volume binds through `dsh volume`.  
 
 > [!CAUTION]
 > Currently work in progress
@@ -32,7 +32,7 @@ dsh stop - stop dsh container
 dsh restart - load new plugins
 
 dsh verify - check all volume mounts exist, remove missing entries
-dsh volume - TUI for adding/removing RW & RO access to files/directories
+dsh volume - TUI for mounting a parent directory and blacklisting (shadowing) files/directories
 dsh update - pulls newest github version
 dsh reinstall - reruns install script
 dsh uninstall - removes Docker files, asks confirmation for ./config/dsh/*
