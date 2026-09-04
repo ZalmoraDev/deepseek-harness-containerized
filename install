@@ -566,27 +566,67 @@ case "\$1" in
       exit 0
     fi
 
+    # Build container -> host map from all host binds (for /dev/null resolution)
+    map_ct=(); map_hp=()
+    for bind in "\${raw_binds[@]}"; do
+      hp="\${bind%%:*}"
+      case "\$hp" in */*) ;; *) continue ;; esac
+      [ "\$hp" = "/dev/null" ] && continue
+      cp="\${bind#*:}"
+      case "\$cp" in *:ro) cp="\${cp%:ro}" ;; esac
+      if [ "\$cp" != "/" ]; then cp="\${cp%/}"; fi
+      hp="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+      if [ "\$hp" != "/" ]; then hp="\${hp%/}"; fi
+      map_ct+=("\$cp"); map_hp+=("\$hp")
+    done
+    resolve_ct() {
+      local ct="\$1" j cp hp best="" best_len=-1 sfx
+      for j in "\${!map_ct[@]}"; do
+        cp="\${map_ct[\$j]}"
+        if [[ "\$ct" == "\$cp" || "\$ct" == "\$cp/"* ]]; then
+          if (( \${#cp} > best_len )); then
+            sfx="\${ct#\$cp}"
+            if [ "\$cp" = "/" ] && [ -n "\$sfx" ]; then sfx="/\$sfx"; fi
+            best="\${map_hp[\$j]}\$sfx"; best_len=\${#cp}
+          fi
+        fi
+      done
+      echo "\$best"
+    }
+
     missing_binds=()
     pass_count=0
     missing_count=0
 
     for bind in "\${raw_binds[@]}"; do
-      host_path="\${bind%%:*}"
-      # Expand \${HOME} and ~
-      host_path="\$(echo "\$host_path" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
-      # Resolve relative paths against DSH_DIR
-      if [[ "\$host_path" != /* ]]; then
-        host_path="\$DSH_DIR/\$host_path"
+      hp="\${bind%%:*}"
+      case "\$hp" in */*) ;; *) continue ;; esac
+      cp="\${bind#*:}"
+      case "\$cp" in *:ro) cp="\${cp%:ro}" ;; esac
+      if [ "\$cp" != "/" ]; then cp="\${cp%/}"; fi
+
+      if [ "\$hp" = "/dev/null" ]; then
+        resolved="\$(resolve_ct "\$cp")"
+        [ -n "\$resolved" ] && display="\$resolved" || display="\$cp"
+        check="\$display"
+        tag_col="$ERROR"; tag="[x]"
+      else
+        display="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
+        if [[ "\$display" != /* ]]; then display="\$DSH_DIR/\$display"; fi
+        check="\$display"
+        case "\$bind" in
+          *:ro) tag_col="$INFO"; tag="[r]" ;;
+          *)   tag_col="$SUCCESS"; tag="[w]" ;;
+        esac
       fi
 
-      # Check existence (file or directory)
-      if [ -e "\$host_path" ]; then
+      if [ -e "\$check" ]; then
         pass_count=\$((pass_count + 1))
-        dsh_print "PASS - \$host_path" "\$SUCCESS"
+        dsh_print "PASS - \${tag_col}\${tag}\${ENDCOLOR} \$display" "\$SUCCESS"
       else
         missing_count=\$((missing_count + 1))
         missing_binds+=("\$bind")
-        dsh_print "MISS - \$host_path" "\$ERROR"
+        dsh_print "MISS - \${tag_col}\${tag}\${ENDCOLOR} \$display" "\$ERROR"
       fi
     done
 

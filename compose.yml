@@ -31,5 +31,3 @@ services:
       - no-new-privileges:true
     volumes: # KEEP THE FIRST LINE. The rest `dsh volume` adds/removes automatically
       - ./config/dsh:/home/node/.dsh
-      - ${HOME}/containers/dsh/:/home/node/containers/dsh/
-      - /dev/null:/home/node/containers/dsh/LICENSE
