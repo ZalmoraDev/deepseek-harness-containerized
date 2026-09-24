@@ -44,7 +44,6 @@ print_help() {
 
 # Fail / Interruption handling
 set -e
-trap 'echo "Interrupted. Exiting safely."; exit 130' INT
 
 dsh_print "Checking if required dependencies are installed" "$INFO"
 missing_deps=()
@@ -59,7 +58,7 @@ if (( ${#missing_deps[@]} > 0 )); then
     dsh_print "EXIT 1" "$ERROR"
     exit 1
 fi
-# Ask for sudo now if docker isn't started opposed to during the scrip
+# Ask for sudo now if docker isn't started opposed to during the script
 # Needed to temporarily launch to install plugin(s)
 systemctl is-active --quiet docker || { dsh_print "Asking for sudo to start docker.service" "$INFO"; \
 sudo systemctl start docker; }

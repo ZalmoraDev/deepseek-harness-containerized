@@ -31,3 +31,10 @@ services:
       - no-new-privileges:true
     volumes: # KEEP THE FIRST LINE. The rest `dsh volume` adds/removes automatically
       - ./config/dsh:/home/node/.dsh
+      - ${HOME}/code/cs/todo-app:/home/node/code/cs/todo-app
+      - /dev/null:/home/node/code/cs/todo-app/todo-app-backend/.env
+      - /dev/null:/home/node/code/cs/todo-app/todo-app-frontend/.env
+      - ${HOME}/code/school/06-webdev1/tesserarius:/home/node/code/school/06-webdev1/tesserarius
+      - ${HOME}/containers/dsh:/home/node/containers/dsh
+      - ${HOME}/code/cs/projects/cmdb:/home/node/code/cs/projects/cmdb
+      - /dev/null:/home/node/code/cs/projects/cmdb/.env

@@ -1,0 +1,35 @@
+ui-onboarding:
+  welcomeNoticeVersion: 2026-08-13.1
+permission:
+  defaultPreset: danger-full-access
+llm-deepseek:
+  models: []
+llm-pi-ai:
+  providers:
+    opencode-go:
+      api: openai-completions
+      apiKeyEnv: OPENCODE_GO_API_KEY
+      baseURL: https://opencode.ai/zen/go/v1
+      headers:
+        # Fix for discussion: https://github.com/deepseek-ai/deepseek-harness/discussions/5495
+        x-opencode-session: "77ad8a718f3b4dc066e55adf91f6ea93153b" # openssl rand -hex 18
+      models:
+        - id: mimo-v2.6-pro
+          name: "⚪GO: xiaomi / mimo-v2.6-pro"
+        - id: mimo-v2.6-flash
+          name: "⚪GO: xiaomi / mimo-v2.6-flash"
+    openrouter:
+      models:
+        - id: z-ai/glm-5.3-flash
+          name: "🟢OR: z-ai / glm-5.3-flash (phala/fp8)"
+          provider: { "only": [ "phala/fp8" ], "allow_fallbacks": false }
+        - id: xiaomi/mimo-v2.6-pro
+          name: "🟢OR: xiaomi / mimo-v2.6-pro (deepinfra/fp8)"
+          provider: { "only": [ "deepinfra/fp8" ], "allow_fallbacks": false }
+        - id: xiaomi/mimo-v2.6-flash
+          name: "🟢OR: xiaomi / mimo-v2.6-flash (deepinfra/fp8)"
+          provider: { "only": [ "deepinfra/fp8" ], "allow_fallbacks": false }
+      apiKeyEnv: OPENROUTER_API_KEY
+agent-default-model:
+  provider: openrouter
+  model: xiaomi/mimo-v2.6-flash
