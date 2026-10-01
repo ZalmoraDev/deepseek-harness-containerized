@@ -1,6 +1,29 @@
 # Your patch layer for this dsh profile, applied after every bundle layer:
 # a top-level YAML array of loader patch entries (id-targeted config
 # overrides, disables, and insert lists; `!!js` expressions allowed).
+
+############
+# Security #
+############
+- id: permission
+  name: "@deepseek-ai/dsh-permission-presets"
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: never
+      workspace-write:
+        sandbox: workspace-write
+        approval: never
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+    defaultPreset: danger-full-access
+
+
+#############################
+# SearXNG web search engine #
+#############################
 - id: web
   config:
     searchProvider: searxng
@@ -11,3 +34,102 @@
 - id: web-search-searxng
   config:
     baseURL: http://searxng:8080
+
+
+##################
+# User Interface #
+##################
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1
+- id: session-log-deepseek
+  name: "@deepseek-ai/dsh-session-log-deepseek"
+  config:
+    enabled: false
+
+- id: ui-theme
+  name: "@deepseek-ai/dsh-client-ui-theme"
+  config:
+    fontSize: 14
+
+
+##########
+# MODELS #
+##########
+- id: llm-deepseek
+  name: "@deepseek-ai/dsh-llm-deepseek-api-key"
+  config:
+    models: [] # turn off deepseek provided models
+
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: openrouter
+    model: deepseek/deepseek-v4.1-flash
+
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      opencode-go:
+        models:
+          - id: mimo-v2.6-flash
+            name: "⚪GO: mimo-v2.6-flash"
+            contextWindow: 1048576
+            maxTokens: 131072
+            input:
+              - text
+              - image
+          - id: mimo-v2.6-pro
+            name: "⚪GO: mimo-v2.6-pro"
+            contextWindow: 1048576
+            maxTokens: 131072
+            input:
+              - text
+              - image
+          - id: deepseek-v4.1-flash
+            name: "⚪GO: deepseek-v4.1-flash"
+            contextWindow: 1000000
+            maxTokens: 384000
+            input:
+              - text
+              - image
+        apiKeyEnv: OPENCODE_GO_API_KEY
+      openrouter:
+        # TODO: I am unsure this is the correct way to specify provider, docs aren't clear either
+        models:
+          - id: xiaomi/mimo-v2.6-flash
+            name: "🟢OR: mimo-v2.6-flash (notiva)"
+            provider:
+              only:
+                - novita/fp8
+              allow_fallbacks: false
+            contextWindow: 1048576
+            maxTokens: 131072
+            input:
+              - text
+              - image
+          - id: xiaomi/mimo-v2.6-pro
+            name: "🟢OR: mimo-v2.6-pro (deepinfra)"
+            provider:
+              only:
+                - deepinfra/fp8
+              allow_fallbacks: false
+            contextWindow: 1048576
+            maxTokens: 131072
+            input:
+              - text
+              - image
+          - id: deepseek/deepseek-v4.1-flash
+            name: "🟢OR: DeepSeek V4.1 Flash (relace)"
+            provider:
+              only:
+                - relace
+              allow_fallbacks: false
+            contextWindow: 1048576
+            maxTokens: 384000
+            input:
+              - text
+              - image
+        apiKeyEnv: OPENROUTER_API_KEY

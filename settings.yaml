@@ -31,5 +31,5 @@ llm-pi-ai:
           provider: { "only": [ "deepinfra/fp8" ], "allow_fallbacks": false }
       apiKeyEnv: OPENROUTER_API_KEY
 agent-default-model:
-  provider: openrouter
-  model: xiaomi/mimo-v2.6-flash
+  provider: opencode-go
+  model: mimo-v2.6-pro

@@ -1,16 +1,17 @@
-FROM node:24-alpine
+FROM node:24-trixie-slim
 WORKDIR /home/node/app
 COPY deepseek-harness/ /home/node/app
 ENV CI=true
 
 # 1 essential, 2 recommended, 3 database acces, 4 compression
-RUN apk add --no-cache \
-    git pnpm socat su-exec nodejs-dev nano python3 py3-pip g++ \
-    bash curl docker grep sed gawk ripgrep fd jq make cmake yt-dlp \
-    postgresql-client postgresql-dev sqlite sqlite-dev \
-    xz zstd zstd-dev
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git socat gosu nano python3 python3-pip g++ make cmake musl-tools \
+    bash curl ca-certificates grep sed gawk ripgrep fd-find jq yt-dlp \
+    postgresql-client libpq-dev sqlite3 libsqlite3-dev \
+    xz-utils zstd libzstd-dev docker-cli
 
-RUN npm install -g node-gyp # Needed for plugin installation
+RUN npm install -g pnpm node-gyp
+RUN pnpm config set global-bin-dir /usr/local/bin
 RUN pnpm install
 RUN pnpm run build
 # Own the app tree as node at build time so there is no startup chown race:
