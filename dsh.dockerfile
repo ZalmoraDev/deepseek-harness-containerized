@@ -1,14 +1,14 @@
 FROM node:24-trixie-slim
 WORKDIR /home/node/app
-COPY deepseek-harness/ /home/node/app
+COPY workspaces/deepseek-harness/ /home/node/app
 ENV CI=true
 
 # 1 essential, 2 recommended, 3 database acces, 4 compression
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git socat gosu nano python3 python3-pip g++ make cmake musl-tools \
-    bash curl ca-certificates grep sed gawk ripgrep fd-find jq yt-dlp \
+    bash curl ca-certificates grep sed gawk ripgrep fd-find jq yt-dlp docker-cli \
     postgresql-client libpq-dev sqlite3 libsqlite3-dev \
-    xz-utils zstd libzstd-dev docker-cli
+    xz-utils zstd libzstd-dev
 
 RUN npm install -g pnpm node-gyp
 RUN pnpm config set global-bin-dir /usr/local/bin
@@ -20,7 +20,7 @@ RUN chown -R node:node /home/node
 EXPOSE 3080
 
 # Normalize 'Line Feed' CRLF -> LF so a Windows git checkout does notleave a trailing \r on the shebang
-COPY entrypoint /entrypoint
+COPY scripts/entrypoint /entrypoint
 RUN sed -i 's/\r$//' /entrypoint && chmod +x /entrypoint
 ENTRYPOINT ["/entrypoint"]
 

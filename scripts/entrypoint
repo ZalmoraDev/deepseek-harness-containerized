@@ -8,4 +8,5 @@ PGID="${PGID:-1000}"
 mkdir -p /home/node/.dsh
 chown -R node:node /home/node
 
+# TODO: Remove gosu
 exec gosu node "$@"
