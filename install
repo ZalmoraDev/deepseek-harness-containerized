@@ -29,7 +29,7 @@ print_help() {
     echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
     echo
     echo "${COMMAND}dsh verify$ENDCOLOR - check all volume mounts exist, remove missing entries" "$INFO"
-    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for mounting a parent directory and blacklisting (shadowing) files/directories" "$INFO"
+    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for white- & blacklisting files/directories" "$INFO"
     echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
     echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script" "$INFO"
     echo "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION./config/dsh/*$ENDCOLOR" "$INFO"
@@ -66,14 +66,16 @@ sudo systemctl start docker; }
 
 
 dsh_print "Checking if DeepSeek Harness repo is already present" "$INFO"
-if [[ ! -d "./deepseek-harness" ]]; then
+if [[ ! -d "./workspaces/deepseek-harness" ]]; then
   dsh_print "Repo not found, cloning deepseek-harness github project" "$INFO"
+  cd workspaces
   git clone -q --depth 1 https://github.com/deepseek-ai/deepseek-harness.git
   dsh_print "Cloned DeepSeek Harness repo, location:$LOCATION $(pwd)/deepseek-harness/$ENDCOLOR" "$SUCCESS"
+  cd ../
 fi
 
 dsh_print "Building Docker image (may take a while)" "$INFO"
-docker compose build -q 2>/dev/null
+docker compose build -q
 
 dsh_print "Creating Docker container" "$INFO"
 docker compose create --quiet-pull 2>/dev/null
@@ -741,10 +743,10 @@ echo
 echo "-----------------------------------------------------------------------------------------------"
 echo
 dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
-echo
-dsh_print "IMPORTANT:" "$IMPORTANT"
-dsh_print "To avoid sandboxing issues, make sure to always run with 'Full Access'" "$IMPORTANT"
-dsh_print "Doing this is NOT a security concern as Docker provides isolation through volume mounting" "$IMPORTANT"
+#echo
+#dsh_print "IMPORTANT:" "$IMPORTANT"
+#dsh_print "To avoid sandboxing issues, make sure to always run with 'Full Access'" "$IMPORTANT"
+#dsh_print "Doing this is NOT a security concern as Docker provides isolation through volume mounting" "$IMPORTANT"
 echo
 
 print_help

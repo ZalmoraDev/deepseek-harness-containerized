@@ -97,7 +97,6 @@
               - image
         apiKeyEnv: OPENCODE_GO_API_KEY
       openrouter:
-        # TODO: I am unsure this is the correct way to specify provider, docs aren't clear either
         models:
           - id: xiaomi/mimo-v2.6-flash
             name: "🟢OR: mimo-v2.6-flash (notiva)"
