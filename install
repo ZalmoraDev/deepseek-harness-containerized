@@ -1,43 +1,51 @@
 #!/usr/bin/env bash
 
 # ----- colors -----
-ERROR=$'\033[31m'
-SUCCESS=$'\033[32m'
-INFO=$'\033[34m'
-IMPORTANT=$'\033[35m'
-PROMPT=$'\033[1;34m'
+FAILED=$'\033[1;41m'
+OK=$'\033[1;42m'
+INFO=$'\033[1;44m'
+PROMPT=$'\033[1;45m'
 
-COMMAND=$'\033[33m'
-LOCATION=$'\033[36m'
+COMMAND=$'\033[1;33m'
+LOCATION=$'\033[1;36m'
 
+PROJECTCOLOR=$'\033[1;44m'
 ENDCOLOR=$'\033[0m'
 
 # Visualize scripts output
 dsh_print() {
     local text="$1"
     local color="$2"
+    local status
 
-    echo "${color}[dsh]${ENDCOLOR} ${text}"
+    case "$color" in
+        "$FAILED")   status="FAILED" ;;
+        "$OK") status="  OK  " ;;
+        "$PROMPT")  status="PROMPT" ;;
+        *)          status=" INFO " ;; # INFO / IMPORTANT share the same status
+    esac
+
+    echo "${PROJECTCOLOR}  DSH  ${ENDCOLOR}${color}${status}${ENDCOLOR} ${text}"
 }
 
 # Print the dsh help menu
 print_help() {
-    echo "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
+    dsh_print "${COMMAND}dsh help$ENDCOLOR - print this home binary's help menu" "$INFO"
     echo
-    echo "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
-    echo "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
-    echo "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
+    dsh_print "${COMMAND}dsh start$ENDCOLOR - start dsh container" "$INFO"
+    dsh_print "${COMMAND}dsh stop$ENDCOLOR - stop dsh container" "$INFO"
+    dsh_print "${COMMAND}dsh restart$ENDCOLOR - load new plugins" "$INFO"
     echo
-    echo "${COMMAND}dsh verify$ENDCOLOR - check all volume mounts exist, remove missing entries" "$INFO"
-    echo "${COMMAND}dsh volume$ENDCOLOR - TUI for white- & blacklisting files/directories" "$INFO"
-    echo "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
-    echo "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script" "$INFO"
-    echo "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION./config/dsh/*$ENDCOLOR" "$INFO"
+    dsh_print "${COMMAND}dsh verify$ENDCOLOR - check all volume mounts exist, remove missing entries" "$INFO"
+    dsh_print "${COMMAND}dsh volume$ENDCOLOR - TUI for white- & blacklisting files/directories" "$INFO"
+    dsh_print "${COMMAND}dsh update$ENDCOLOR - pulls newest github version" "$INFO"
+    dsh_print "${COMMAND}dsh reinstall$ENDCOLOR - reruns install script" "$INFO"
+    dsh_print "${COMMAND}dsh uninstall$ENDCOLOR - removes Docker files, asks confirmation for $LOCATION./config/dsh/*$ENDCOLOR" "$INFO"
     echo
-    echo "Only whilst actively running container:" "$INFO"
-    echo "${COMMAND}dsh [args...]$ENDCOLOR - passthrough to 'pnpm dsh' inside container" "$INFO"
-    echo "${COMMAND}dsh --help$ENDCOLOR - print help menu of the container DSH binary" "$INFO"
-    echo "${COMMAND}dsh enter$ENDCOLOR - docker exec into container as interactive shell" "$INFO"
+    dsh_print "Only whilst actively running container:" "$INFO"
+    dsh_print "${COMMAND}dsh [args...]$ENDCOLOR - passthrough to 'pnpm dsh' inside container" "$INFO"
+    dsh_print "${COMMAND}dsh --help$ENDCOLOR - print help menu of the container DSH binary" "$INFO"
+    dsh_print "${COMMAND}dsh enter$ENDCOLOR - docker exec into container as interactive shell" "$INFO"
 }
 
 
@@ -54,8 +62,8 @@ command -v git >/dev/null 2>&1 || missing_deps+=("git")
 command -v openssl >/dev/null 2>&1 || missing_deps+=("openSSL")
 
 if (( ${#missing_deps[@]} > 0 )); then
-    dsh_print "Missing dependencies: ${missing_deps[*]}" "$ERROR"
-    dsh_print "EXIT 1" "$ERROR"
+    dsh_print "Missing dependencies: ${missing_deps[*]}" "$FAILED"
+    dsh_print "EXIT 1" "$FAILED"
     exit 1
 fi
 # Ask for sudo now if docker isn't started opposed to during the script
@@ -67,15 +75,16 @@ sudo systemctl start docker; }
 
 dsh_print "Checking if DeepSeek Harness repo is already present" "$INFO"
 if [[ ! -d "./workspaces/deepseek-harness" ]]; then
-  dsh_print "Repo not found, cloning deepseek-harness github project" "$INFO"
+  dsh_print "Repo not found, cloning PINNED v0.2.0-rc.2 deepseek-harness from GitHub" "$INFO"
+  mkdir -p workspaces
   cd workspaces
-  git clone -q --depth 1 https://github.com/deepseek-ai/deepseek-harness.git
-  dsh_print "Cloned DeepSeek Harness repo, location:$LOCATION $(pwd)/deepseek-harness/$ENDCOLOR" "$SUCCESS"
+  git clone -q --depth 1 --branch dsh-v0.2.0-rc.2 https://github.com/deepseek-ai/deepseek-harness.git >/dev/null 2>&1
+  dsh_print "Cloned DeepSeek Harness repo, location:$LOCATION $(pwd)/deepseek-harness/$ENDCOLOR" "$OK"
   cd ../
 fi
 
 dsh_print "Building Docker image (may take a while)" "$INFO"
-docker compose build -q
+docker compose build -q >/dev/null 2>&1
 
 dsh_print "Creating Docker container" "$INFO"
 docker compose create --quiet-pull 2>/dev/null
@@ -84,7 +93,7 @@ echo
 dsh_print "Configuring DeepSeek Harness" "$INFO"
 mkdir -p ./config/dsh/profiles/web/
 cat ./templates/dsh/profiles/web/cordis.patch.yml > ./config/dsh/profiles/web/cordis.patch.yml
-dsh_print "Generated modified$LOCATION config/dsh/profiles/web/cordis.patch.yml$ENDCOLOR" "$SUCCESS"
+dsh_print "Generated modified$LOCATION config/dsh/profiles/web/cordis.patch.yml$ENDCOLOR" "$OK"
 
 
 dsh_print "Configuring SearXNG" "$INFO"
@@ -92,7 +101,7 @@ mkdir -p ./config/searxng
 SEARXNG_SERVER_SECRET=$(openssl rand -hex 32)
 # Substitute __SECRET_KEY__ with generated, overwrite searxng with this edited version
 sed "s/__SECRET_KEY__/$SEARXNG_SERVER_SECRET/" ./templates/searxng/settings.yml > ./config/searxng/settings.yml
-dsh_print "Generated modified$LOCATION config/searxng/settings.yml$ENDCOLOR" "$SUCCESS"
+dsh_print "Generated modified$LOCATION config/searxng/settings.yml$ENDCOLOR" "$OK"
 
 
 
@@ -113,11 +122,10 @@ cat > "$WRAPPER" << EOF
 
 DSH_DIR="$DSH_DIR"
 
-ERROR=$'\033[31m'
-SUCCESS=$'\033[32m'
+FAILED=$'\033[31m'
+OK=$'\033[32m'
 INFO=$'\033[34m'
-IMPORTANT=$'\033[35m'
-PROMPT=$'\033[1;34m'
+PROMPT=$'\033[35m'
 COMMAND=$'\033[33m'
 LOCATION=$'\033[36m'
 ENDCOLOR=$'\033[0m'
@@ -125,7 +133,16 @@ ENDCOLOR=$'\033[0m'
 dsh_print() {
     local text="\$1"
     local color="\$2"
-    echo "\${color}[dsh]\${ENDCOLOR} \${text}"
+    local status
+
+    case "\$color" in
+        "\$FAILED")   status="[FAILED]" ;;
+        "\$OK") status="[  OK  ]" ;;
+        "\$PROMPT")  status="[PROMPT]" ;;
+        *)           status="[ INFO ]" ;; # INFO / IMPORTANT share the same status
+    esac
+
+    echo "DSH \${color}\${status}\${ENDCOLOR} \${text}"
 }
 
 print_help() {
@@ -158,8 +175,8 @@ case "\$1" in
     systemctl is-active --quiet docker || sudo systemctl start docker
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
     echo
-    dsh_print "DeepSeek Harness: http://127.0.0.1:3080" "\$SUCCESS"
-    dsh_print "SearXNG:          http://127.0.0.1:3081" "\$SUCCESS"
+    dsh_print "DeepSeek Harness: http://127.0.0.1:3080" "\$OK"
+    dsh_print "SearXNG:          http://127.0.0.1:3081" "\$OK"
     ;;
   stop)
     dsh_print "Stopping..." "\$INFO"
@@ -171,8 +188,8 @@ case "\$1" in
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" stop 2>/dev/null
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" up -d --quiet-pull 2>/dev/null
     echo
-    dsh_print "DeepSeek Harness: http://127.0.0.1:3080" "\$SUCCESS"
-    dsh_print "SearXNG:          http://127.0.0.1:3081" "\$SUCCESS"
+    dsh_print "DeepSeek Harness: http://127.0.0.1:3080" "\$OK"
+    dsh_print "SearXNG:          http://127.0.0.1:3081" "\$OK"
     ;;
 
   update)
@@ -184,14 +201,14 @@ case "\$1" in
     ;;
   uninstall)
     docker compose -p dsh -f "\$DSH_DIR/compose.yml" down -v --rmi local 2>/dev/null
-    dsh_print "Removed Docker files" "\$SUCCESS"
+    dsh_print "Removed Docker files" "\$OK"
     rm -rf "\$HOME/bin/dsh"
-    dsh_print "Removed dsh home binary" "\$SUCCESS"
+    dsh_print "Removed dsh home binary" "\$OK"
 
     read -rp "Remove ~/.dsh? (y/N): " answer
     if [[ "\$answer" =~ ^[Yy]\$ ]]; then
       rm -rf "\$HOME/.dsh"
-      dsh_print "Removed ~/.dsh" "\$SUCCESS"
+      dsh_print "Removed ~/.dsh" "\$OK"
     else
       dsh_print "Kept ~/.dsh" "\$INFO"
     fi
@@ -208,7 +225,7 @@ case "\$1" in
       second_vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
     fi
     if [ -z "\$second_vol_line" ]; then
-      dsh_print "Could not locate the deepseek-harness 'volumes:' section in \$COMPOSE_FILE" "\$ERROR"
+      dsh_print "Could not locate the deepseek-harness 'volumes:' section in \$COMPOSE_FILE" "\$FAILED"
       exit 1
     fi
 
@@ -333,9 +350,9 @@ case "\$1" in
       echo "  (UP/DOWN move, SPACE/RIGHT cycle ''->r->w->x, LEFT reverse, a=all w, n=none, ENTER apply, q quit)"
       if [ -n "\$parent_hp" ]; then
         case "\$parent_mode" in
-          w) echo "  ${SUCCESS}\$parent_hp is a read-write mounted parent directory, everything below it is already accessible in the container, mark items [x] to blacklist (shadow) them$ENDCOLOR" ;;
+          w) echo "  ${OK}\$parent_hp is a read-write mounted parent directory, everything below it is already accessible in the container, mark items [x] to blacklist (shadow) them$ENDCOLOR" ;;
           r) echo "  ${INFO}\$parent_hp is a read-only mounted parent directory, everything below it is already readable in the container, [w] grants an item its own read-write bind, [x] blacklists (shadows) it$ENDCOLOR" ;;
-          x) echo "  ${ERROR}\$parent_hp is a blacklisted [x] parent, an anonymous volume shadows it so nothing below it is accessible in the container$ENDCOLOR" ;;
+          x) echo "  ${FAILED}\$parent_hp is a blacklisted [x] parent, an anonymous volume shadows it so nothing below it is accessible in the container$ENDCOLOR" ;;
         esac
       else
         echo "  ${INFO}no mounted parent directory found, items only reach the container through their own [r]/[w] bind$ENDCOLOR"
@@ -346,8 +363,8 @@ case "\$1" in
         if [ "\$st" = "" ]; then mark="[ ]"; else mark="[\$st]"; fi
         case "\$st" in
           r) col="$INFO"; endc="$ENDCOLOR" ;;
-          w) col="$SUCCESS"; endc="$ENDCOLOR" ;;
-          x) col="$ERROR"; endc="$ENDCOLOR" ;;
+          w) col="$OK"; endc="$ENDCOLOR" ;;
+          x) col="$FAILED"; endc="$ENDCOLOR" ;;
           *) col=""; endc="" ;;
         esac
         if [ "\$i" = "\$sel" ]; then
@@ -528,14 +545,14 @@ case "\$1" in
     for b in "\${new_binds[@]}"; do out+=("      - \$b"); done
     for ((k=ei+1; k<\${#clines[@]}; k++)); do out+=("\${clines[\$k]}"); done
     printf '%s\n' "\${out[@]}" > "\$COMPOSE_FILE"
-    dsh_print "compose.yml volume binds updated." "\$SUCCESS"
+    dsh_print "compose.yml volume binds updated." "\$OK"
     ;;
 
   verify)
     COMPOSE_FILE="\$DSH_DIR/compose.yml"
 
     if [ ! -f "\$COMPOSE_FILE" ]; then
-      dsh_print "Error: compose.yml not found at \$COMPOSE_FILE" "\$ERROR"
+      dsh_print "Error: compose.yml not found at \$COMPOSE_FILE" "\$FAILED"
       exit 1
     fi
 
@@ -546,7 +563,7 @@ case "\$1" in
     # Find the line number of the second 'volumes:' block
     vol_line=\$(awk 'BEGIN{c=0} /^ *volumes:/{c++; if(c==2){print NR; exit}}' "\$COMPOSE_FILE")
     if [ -z "\$vol_line" ]; then
-      dsh_print "Could not locate the deepseek-harness 'volumes:' section" "\$ERROR"
+      dsh_print "Could not locate the deepseek-harness 'volumes:' section" "\$FAILED"
       exit 1
     fi
 
@@ -610,24 +627,24 @@ case "\$1" in
         resolved="\$(resolve_ct "\$cp")"
         [ -n "\$resolved" ] && display="\$resolved" || display="\$cp"
         check="\$display"
-        tag_col="$ERROR"; tag="[x]"
+        tag_col="$FAILED"; tag="[x]"
       else
         display="\$(echo "\$hp" | sed "s|^\\\${HOME}|\$HOME|; s|^\~|\$HOME|")"
         if [[ "\$display" != /* ]]; then display="\$DSH_DIR/\$display"; fi
         check="\$display"
         case "\$bind" in
           *:ro) tag_col="$INFO"; tag="[r]" ;;
-          *)   tag_col="$SUCCESS"; tag="[w]" ;;
+          *)   tag_col="$OK"; tag="[w]" ;;
         esac
       fi
 
       if [ -e "\$check" ]; then
         pass_count=\$((pass_count + 1))
-        dsh_print "PASS - \${tag_col}\${tag}\${ENDCOLOR} \$display" "\$SUCCESS"
+        dsh_print "PASS - \${tag_col}\${tag}\${ENDCOLOR} \$display" "\$OK"
       else
         missing_count=\$((missing_count + 1))
         missing_binds+=("\$bind")
-        dsh_print "MISS - \${tag_col}\${tag}\${ENDCOLOR} \$display" "\$ERROR"
+        dsh_print "MISS - \${tag_col}\${tag}\${ENDCOLOR} \$display" "\$FAILED"
       fi
     done
 
@@ -635,12 +652,12 @@ case "\$1" in
     dsh_print "Total: \$((pass_count + missing_count)) | Passed: \$pass_count | Missing: \$missing_count" "\$INFO"
 
     if [ \$missing_count -eq 0 ]; then
-      dsh_print "All volume mounts are valid." "\$SUCCESS"
+      dsh_print "All volume mounts are valid." "\$OK"
       exit 0
     fi
 
     echo ""
-    read -rp "$(echo -e "\033[1;34m[dsh]\033[0m") Would you like to remove these missing volume entries from compose.yml? (y/n): " answer
+    read -rp "$(echo -e "\033[35m[PROMPT]\033[0m") Would you like to remove these missing volume entries from compose.yml? (y/n): " answer
     if [[ ! "\$answer" =~ ^[Yy]\$ ]]; then
       dsh_print "Aborted. No changes made." "\$INFO"
       exit 0
@@ -698,7 +715,7 @@ case "\$1" in
     done
 
     printf '%s\n' "\${out_lines[@]}" > "\$COMPOSE_FILE"
-    dsh_print "Removed \$missing_count missing volume entry/entries from compose.yml." "\$SUCCESS"
+    dsh_print "Removed \$missing_count missing volume entry/entries from compose.yml." "\$OK"
     ;;
 
   *)
@@ -716,7 +733,7 @@ esac
 EOF
 
 chmod a+x "$WRAPPER"
-dsh_print "Created dsh wrapper binary at:$LOCATION $WRAPPER$ENDCOLOR" "$SUCCESS"
+dsh_print "Created dsh wrapper binary at:$LOCATION $WRAPPER$ENDCOLOR" "$OK"
 echo
 
 dsh start >/dev/null 2>&1
@@ -727,7 +744,7 @@ dsh plugin --profile web add dsh-context >/dev/null 2>&1
 dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest >/dev/null 2>&1
 dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=https://registry.npmjs.org/ >/dev/null 2>&1
 dsh stop >/dev/null 2>&1
-dsh_print "Installed dsh plugins" "$SUCCESS"
+dsh_print "Installed dsh plugins" "$OK"
 
 
 # Create ~/.dsh if not present already
@@ -736,17 +753,13 @@ if [ ! -d "$DSH_CONFIG_DIR" ]; then
   mkdir -p "$DSH_CONFIG_DIR"
 elif [ "$(stat -c '%u' "$DSH_CONFIG_DIR")" != "$(id -u)" ]; then
   chown -R "$(id -u):$(id -g)" "$DSH_CONFIG_DIR"
-  dsh_print "Changed $LOCATION~/.dsh$ENDCOLOR ownership from root (assigned by DSH build) to your user '$(WHOAMI)'" "$SUCCESS"
+  dsh_print "Changed $LOCATION~/.dsh$ENDCOLOR ownership from root (assigned by DSH build) to your user '$(WHOAMI)'" "$OK"
 fi
 
 echo
 echo "-----------------------------------------------------------------------------------------------"
 echo
-dsh_print "SUCCESSFULLY INSTALLED" "$SUCCESS"
-#echo
-#dsh_print "IMPORTANT:" "$IMPORTANT"
-#dsh_print "To avoid sandboxing issues, make sure to always run with 'Full Access'" "$IMPORTANT"
-#dsh_print "Doing this is NOT a security concern as Docker provides isolation through volume mounting" "$IMPORTANT"
+dsh_print "SUCCESSFULLY INSTALLED" "$OK"
 echo
 
 print_help
