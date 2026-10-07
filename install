@@ -732,6 +732,8 @@ dsh_info "Installing & Updating recommended plugins (may take a while)"
 dsh plugin --profile web add dshmarket >/dev/null 2>&1
 dsh plugin --profile web add dsh-searxng >/dev/null 2>&1
 dsh plugin --profile web add dsh-context >/dev/null 2>&1
+dsh plugin --profile web add billion-context >/dev/null 2>&1
+dsh plugin --profile web add dsh-cost-meter >/dev/null 2>&1
 dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest >/dev/null 2>&1
 dsh plugin --profile web add @michengai/dsh-archive-manager@latest --registry=https://registry.npmjs.org/ >/dev/null 2>&1
 dsh stop >/dev/null 2>&1
