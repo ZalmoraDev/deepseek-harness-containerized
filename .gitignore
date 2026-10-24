@@ -1,6 +1,7 @@
 .idea/
 
-config/dsh/
-config/searxng/
+compose.yml
 
-deepseek-harness/
+config/*
+
+workspaces/deepseek-harness/

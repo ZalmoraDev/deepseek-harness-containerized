@@ -1,8 +1,9 @@
 # 🐋 Deepseek Harness Containerized 🐋
+
 Linux script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with Searxng.  
 Providing isolated workspaces through Docker.  
 Creates wrapper script for easy modification and access.  
-Prevents DSH from accessing unwanted files by blacklisting them with anonymous shadow volume binds through `dsh volume`.  
+Prevents DSH from accessing unwanted files by blacklisting them with anonymous shadow volume binds through `dsh volume`.
 
 > [!CAUTION]
 > Currently work in progress
@@ -13,17 +14,31 @@ Prevents DSH from accessing unwanted files by blacklisting them with anonymous s
 > You can do this per chat or set by default in `Settings -> General -> Permission (Full Access)`
 
 ## 📦 Install
+
 1. Make sure the following are installed:
-   * Docker CLI
-   * Docker Compose
-   * Git
+    * Docker CLI
+    * Docker Compose
+    * Git
 2. Clone this repository
 3. Run `./install`
-4. Run `dsh volume` to configure dsh-workspace volumes access, view results in [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml)
-5. See [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) to configure installed container packages
-5. See the bottom of [install](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/install) to configure installed dsh plugins
+4. Run `dsh volume` to configure dsh-workspace volumes access, view results
+   in [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml)
+5. See [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) to
+   configure installed container packages
+5. See the bottom of [install](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/install) to
+   configure installed dsh plugins
+
+## Explanation
+
+| Name       | Description                                               | Usage                                                                                 |
+|------------|-----------------------------------------------------------|---------------------------------------------------------------------------------------|
+| config     | Live bind to the container's configuration                | Best way to configure running systems<br>(see templates)                              |
+| scripts    | installation scripts for containers & dsh-wrapper         | Run `dsh help` after installation for more information                                | 
+| templates  | Custom files that override defaults in volumes            | Pre-define reproducable configurations i.e. `corids.patch.yml` models<br>(see config) | 
+| workspaces | Cloned repositories used by generic containers as service | Git cloned project source code, bound volume acting as container service              |
 
 ## 🚀 Usage
+
 ```
 dsh help - print this home binary's help menu
 
@@ -44,11 +59,15 @@ dsh enter - docker exec into container as interactive shell
 ```
 
 ## 🤝 Contributing
+
 Personal project. Not accepting PRs.  
 Fork freely for own use.
 
 ## 📜 License
-MIT; Please see the [license file](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/LICENSE) for more information. [tl;dr](https://www.tldrlegal.com/license/mit-license):
+
+MIT; Please see the [license file](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/LICENSE) for
+more information. [tl;dr](https://www.tldrlegal.com/license/mit-license):
+
 ```
 A short, permissive software license.
 Basically, you can do whatever you want as long as you include
