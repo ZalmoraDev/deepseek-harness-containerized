@@ -1,41 +1,36 @@
-# 🐋 Deepseek Harness Containerized 🐋
+# 🐋 DeepSeek Harness Containerized 🐋
 
-Linux script to install & run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with Searxng.  
-Providing isolated workspaces through Docker.  
-Creates wrapper script for easy modification and access.  
-Prevents DSH from accessing unwanted files by blacklisting them with anonymous shadow volume binds through `dsh volume`.
+Linux scripts to install and run [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) with SearXNG,
+sandboxed in Docker:
 
-> [!CAUTION]
-> Currently work in progress
-
-> [!IMPORTANT]
-> To avoid sandboxing issues, make sure to always run with 'Full Access'  
-> Doing this is NOT a security concern as Docker provides isolation through volume mounting  
-> You can do this per chat or set by default in `Settings -> General -> Permission (Full Access)`
+* Docker provides bin/lib & file/dir isolation; only the host paths you mount manually or through `dsh volume`
+  ([see 🚀Usage](#-usage)) are reachable from inside
+* Use `dsh volume`, it mounts a parent directory read-write, read-only or blacklists files or directories inside it with
+  /dev/null.
+* `install` generates a `dsh` wrapper in `~/bin`, which allows easy starting, stopping, restarting, updating, volume
+  mounting & access (`dsh enter`)
+* Configurations live in `config/`, seeded from `templates/` and are bind mounted into the container, so recreating the
+  container keeps your config from `config/`
 
 ## 📦 Install
 
-1. Make sure the following are installed:
-    * Docker CLI
-    * Docker Compose
-    * Git
-2. Clone this repository
-3. Run `./install`
-4. Run `dsh volume` to configure dsh-workspace volumes access, view results
-   in [compose.yml](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/compose.yml)
-5. See [dsh.dockerfile](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/dsh.dockerfile) to
-   configure installed container packages
-5. See the bottom of [install](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/install) to
-   configure installed dsh plugins
+1. Pre-install
+   1. Make sure you are on Linux
+   2. Have the following binaries installed:
+      * Docker CLI
+      * Docker Compose
+      * Git
+      * OpenSSL (used to generate the SearXNG secret)
+2. Install
+   1. Clone and navigate into this repository
+   2. Run `./install`
+3. Post-install
+   1. Run `dsh volume` to configure dsh-workspace volumes access, you can view the results
+       in [compose.yml](compose.yml)
+   2. See [dsh.dockerfile](dsh.dockerfile) to configure installed container packages
+   3. See the bottom of the [install](install) script to configure pre-installed dsh plugins
+   4. See [🚀Usage](#-usage) or run `dsh help` on how to use this project
 
-## Explanation
-
-| Name       | Description                                               | Usage                                                                                 |
-|------------|-----------------------------------------------------------|---------------------------------------------------------------------------------------|
-| config     | Live bind to the container's configuration                | Best way to configure running systems<br>(see templates)                              |
-| scripts    | installation scripts for containers & dsh-wrapper         | Run `dsh help` after installation for more information                                | 
-| templates  | Custom files that override defaults in volumes            | Pre-define reproducable configurations i.e. `corids.patch.yml` models<br>(see config) | 
-| workspaces | Cloned repositories used by generic containers as service | Git cloned project source code, bound volume acting as container service              |
 
 ## 🚀 Usage
 
@@ -50,13 +45,44 @@ dsh verify - check all volume mounts exist, remove missing entries
 dsh volume - TUI for mounting a parent directory and blacklisting (shadowing) files/directories
 dsh update - pulls newest github version
 dsh reinstall - reruns install script
-dsh uninstall - removes Docker files, asks confirmation for ./config/dsh/*
+dsh uninstall - removes Docker files, asks confirmation for ~/.dsh
 
 Only whilst actively running container:
 dsh [args...] - passthrough to 'pnpm dsh' inside container
 dsh --help - print help menu of the container DSH binary
 dsh enter - docker exec into container as interactive shell
 ```
+
+## 📁 Files
+
+```
+config                  RW bind to the container's configuration, best way to configure running container
+    dsh/                    Live DSH config, RW-bound to /home/node/.dsh in the container
+    searxng/                Live searxng settings, install fills in the generated secret
+scripts/                Installation scripts for containers & dsh-wrapper
+    dsh-wrapper             The dsh binary installed to ~/bin/dsh; every subcommand lives here
+    entrypoint              Entrypoint: fixes /home/node ownership, then runs as user node
+templates/              Pre-defined configurations that override volume defaults
+    compose.yml             Pristine compose file, copied to the repo root by install
+    dsh/                    Seeds config/dsh: profile patch (permissions, searxng, models)
+    searxng/                Seeds config/searxng: settings.yml with a __SECRET_KEY__ placeholder
+workspaces/             Git cloned project source code
+   deepseek-harness/        Cloned DSH GH source, copied into and built by the image
+
+.gitignore              -
+compose.yml             Generated by `install.sh`
+dsh.dockerfile          DSH build: deps, config & entrypoint
+install                 Setup: clone, build, config, wrapper & plugins
+LICENSE                 MIT license
+README.md               -
+```
+
+## 👾 Current issues
+
+* Plugins don't get installed by `install`
+* `dsh start` doesn't work sometimes as a passphrase is needed for first use,  
+  this is only fixable currently by running `docker compose up`, copying the URL and changing port 3079 to 3080
+
 
 ## 🤝 Contributing
 
@@ -65,8 +91,8 @@ Fork freely for own use.
 
 ## 📜 License
 
-MIT; Please see the [license file](https://github.com/ZalmoraDev/deepseek-harness-containerized/blob/main/LICENSE) for
-more information. [tl;dr](https://www.tldrlegal.com/license/mit-license):
+MIT; Please see the [license file](LICENSE) for more information.
+[tl;dr](https://www.tldrlegal.com/license/mit-license):
 
 ```
 A short, permissive software license.

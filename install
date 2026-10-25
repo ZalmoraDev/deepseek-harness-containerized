@@ -67,7 +67,6 @@ systemctl is-active --quiet docker || { dsh_info "Asking for sudo to start docke
 sudo systemctl start docker; }
 
 
-
 dsh_info "Checking if DeepSeek Harness repo is already present"
 if [[ ! -d "./workspaces/deepseek-harness" ]]; then
   dsh_info "Repo not found, cloning LATEST deepseek-harness from GitHub"
@@ -77,6 +76,7 @@ if [[ ! -d "./workspaces/deepseek-harness" ]]; then
   dsh_ok "Cloned DeepSeek Harness repo, location:$CYAN_FG $(pwd)/deepseek-harness/$ENDCOLOR"
   cd ../
 fi
+
 
 dsh_info "Creating compose.yml from$CYAN_FG ./templates/compose.yml$ENDCOLOR"
 cp -r ./templates/compose.yml ./
@@ -102,7 +102,6 @@ sed "s/__SECRET_KEY__/$SEARXNG_SERVER_SECRET/" ./templates/searxng/etc/searxng/s
 dsh_ok "Generated modified$CYAN_FG ./config/searxng/etc/searxng/settings.yml$ENDCOLOR"
 
 
-
 DSH_DIR="$(pwd)"
 BIN_DIR="$HOME/bin"
 WRAPPER="$BIN_DIR/dsh"
@@ -125,11 +124,11 @@ echo
 
 dsh start >/dev/null 2>&1
 dsh_info "Installing & Updating recommended plugins (may take a while)"
-dsh plugin --profile web add dshmarket >/dev/null 2>&1
-dsh plugin --profile web allow-version dsh-searxng@0.4.0 --dsh-version 0.2.1-rc.3 --accept-risk >/dev/null 2>&1
-dsh plugin --profile web add dsh-context >/dev/null 2>&1
-dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest >/dev/null 2>&1
-dsh plugin --profile web allow-version @michengai/dsh-archive-manager@1.1.8 --dsh-version 0.2.1-rc.3 --accept-risk >/dev/null 2>&1
+dsh plugin --profile web add dshmarket
+dsh plugin --profile web allow-version dsh-searxng@0.4.0 --dsh-version 0.2.1-rc.3 --accept-risk
+dsh plugin --profile web add dsh-context
+dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest
+dsh plugin --profile web allow-version @michengai/dsh-archive-manager@1.1.8 --dsh-version 0.2.1-rc.3 --accept-risk
 dsh stop >/dev/null 2>&1
 dsh_ok "Installed dsh plugins"
 

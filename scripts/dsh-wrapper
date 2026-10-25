@@ -22,10 +22,10 @@ _dsh_msg() {
     echo "${BLUE_BG}  DSH  ${ENDCOLOR}${color}${label}${ENDCOLOR} $*"
 }
 
-dsh_ok()     { _dsh_msg "  OK  " "$GREEN_FG"  "$@"; }
-dsh_info()   { _dsh_msg " INFO " "$BLUE_FG"   "$@"; }
-dsh_prompt() { _dsh_msg "PROMPT" "$PURPLE_FG" "$@"; }
-dsh_failed() { _dsh_msg "FAILED" "$RED_FG"    "$@" >&2; }
+dsh_ok()     { _dsh_msg "  OK  " "$GREEN_BG"  "$@"; }
+dsh_info()   { _dsh_msg " INFO " "$BLUE_BG"   "$@"; }
+dsh_prompt() { _dsh_msg "PROMPT" "$PURPLE_BG" "$@"; }
+dsh_failed() { _dsh_msg "FAILED" "$RED_BG"    "$@" >&2; }
 
 print_help() {
     echo "${YELLOW_FG}dsh help$ENDCOLOR - print this home binary's help menu" "$BLUE_BG"
