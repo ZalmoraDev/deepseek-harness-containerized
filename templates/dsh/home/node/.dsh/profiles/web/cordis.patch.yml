@@ -73,39 +73,27 @@
   config:
     providers:
       opencode-go:
+        apiKeyEnv: OPENCODE_GO_API_KEY
         models:
-          - id: mimo-v2.6-flash
-            name: "⚪GO: mimo-v2.6-flash"
-            contextWindow: 1048576
-            maxTokens: 131072
-            input:
-              - text
-              - image
-          - id: mimo-v2.6-pro
-            name: "⚪GO: mimo-v2.6-pro"
-            contextWindow: 1048576
-            maxTokens: 131072
+          - id: kimi-k3.1-pro
+            name: "⚪GO: kimi-k3.1-pro ($15)"
             input:
               - text
               - image
           - id: deepseek-v4.1-flash
-            name: "⚪GO: deepseek-v4.1-flash"
-            contextWindow: 1000000
-            maxTokens: 384000
+            name: "⚪GO: deepseek-v4.1-flash ($80)"
             input:
               - text
               - image
-        apiKeyEnv: OPENCODE_GO_API_KEY
       openrouter:
+        apiKeyEnv: OPENROUTER_API_KEY
         models:
-          - id: xiaomi/mimo-v2.6-flash
-            name: "🟢OR: mimo-v2.6-flash (notiva)"
+          - id: moonshotai/kimi-k3.1-pro
+            name: "🟢OR: kimi-k3.1-pro (moonshotai)"
             provider:
               only:
-                - novita/fp8
+                - moonshotai/mxfp4
               allow_fallbacks: false
-            contextWindow: 1048576
-            maxTokens: 131072
             input:
               - text
               - image
@@ -115,20 +103,15 @@
               only:
                 - deepinfra/fp8
               allow_fallbacks: false
-            contextWindow: 1048576
-            maxTokens: 131072
             input:
               - text
               - image
           - id: deepseek/deepseek-v4.1-flash
-            name: "🟢OR: DeepSeek V4.1 Flash (relace)"
+            name: "🟢OR: deepseek-v4.1-flash (relace)"
             provider:
               only:
                 - relace
               allow_fallbacks: false
-            contextWindow: 1048576
-            maxTokens: 384000
             input:
               - text
               - image
-        apiKeyEnv: OPENROUTER_API_KEY

@@ -79,7 +79,7 @@ fi
 
 
 dsh_info "Creating compose.yml from$CYAN_FG ./templates/compose.yml$ENDCOLOR"
-cp -r ./templates/compose.yml ./
+cp -rn ./templates/compose.yml ./
 
 dsh_info "Building Docker image (may take a while)"
 docker compose build -q >/dev/null 2>&1
@@ -91,11 +91,11 @@ echo
 mkdir -p ./config/
 
 dsh_info "Configuring DeepSeek Harness"
-cp -r ./templates/dsh/ ./config/
+cp -rn ./templates/dsh/ ./config/
 dsh_ok "Generated modified$CYAN_FG ./config/dsh/home/node/.dsh/profiles/web/cordis.patch.yml$ENDCOLOR"
 
 dsh_info "Configuring SearXNG"
-cp -r ./templates/searxng/ ./config/
+cp -rn ./templates/searxng/ ./config/
 SEARXNG_SERVER_SECRET=$(openssl rand -hex 32)
 # Overwrite searxng config opposed to template due to templates not being .gitignored
 sed "s/__SECRET_KEY__/$SEARXNG_SERVER_SECRET/" ./templates/searxng/etc/searxng/settings.yml > ./config/searxng/etc/searxng/settings.yml
