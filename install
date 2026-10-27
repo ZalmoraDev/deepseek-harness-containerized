@@ -125,7 +125,6 @@ echo
 dsh start >/dev/null 2>&1
 dsh_info "Installing & Updating recommended plugins (may take a while)"
 dsh plugin --profile web add dshmarket
-dsh plugin --profile web allow-version dsh-searxng@0.4.0 --dsh-version 0.2.1-rc.3 --accept-risk
 dsh plugin --profile web add dsh-context
 dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest
 dsh plugin --profile web allow-version @michengai/dsh-archive-manager@1.1.8 --dsh-version 0.2.1-rc.3 --accept-risk

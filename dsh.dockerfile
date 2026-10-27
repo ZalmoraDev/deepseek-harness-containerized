@@ -1,3 +1,4 @@
+# TODO: Change to nixos container
 FROM node:24-trixie-slim
 WORKDIR /home/node/app
 COPY workspaces/deepseek-harness/ /home/node/app
