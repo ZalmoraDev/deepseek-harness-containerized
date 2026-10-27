@@ -83,6 +83,12 @@ README.md               -
 * `dsh start` doesn't work sometimes as a passphrase is needed for first use,  
   this is only fixable currently by running `docker compose up`, copying the URL and changing port 3079 to 3080
 
+## 📍 Future goals
+* Switch the container image to NixOS with a read-only, human-owned configuration.nix importing human-libs.nix (agent can’t modify)  
+  and agent-libs.nix (agent can read-write to propose libraries/software), so every system-level change stays  
+  declarative and reproducible, with human review before any rebuild applies it.
+* Integrate ability for Blender MCP to be added/activated easily
+* Improve `dsh` home binary, improve TUI, maybe switch to Python
 
 ## 🤝 Contributing
 
